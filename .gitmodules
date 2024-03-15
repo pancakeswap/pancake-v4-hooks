@@ -6,4 +6,4 @@
 	url = https://github.com/pancakeswap/pancake-v4-core
 [submodule "lib/pancake-v4-periphery"]
 	path = lib/pancake-v4-periphery
-	url = git@github.com:pancakeswap/pancake-v4-periphery.git
+	url = https://github.com/pancakeswap/pancake-v4-periphery
