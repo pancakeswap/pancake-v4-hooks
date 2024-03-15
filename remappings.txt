@@ -1,0 +1,3 @@
+@pancakeswap/v4-core/=lib/pancake-v4-core/
+@pancakeswap/v4-periphery/=lib/pancake-v4-periphery/
+@openzeppelin/=lib/pancake-v4-periphery/lib/openzeppelin-contracts/
