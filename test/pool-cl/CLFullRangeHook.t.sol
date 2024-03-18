@@ -36,10 +36,8 @@ contract CLFullRangeHookTest is Test, Deployers {
     /// @dev Max tick for full range with tick spacing of 60
     int24 internal constant MAX_TICK = -MIN_TICK;
 
-    uint16 constant LOCKED_LIQUIDITY = 1000;
-    uint256 constant MAX_DEADLINE = 12329839823;
-    uint256 constant MAX_TICK_LIQUIDITY = 11505069308564788430434325881101412;
-    uint8 constant DUST = 30;
+    uint16 constant MINIMUM_LIQUIDITY = 1000;
+    uint256 constant MAX_TICK_LIQUIDITY = 11505743598341114571880798222544994;
 
     IVault vault;
     ICLPoolManager poolManager;
@@ -132,7 +130,7 @@ contract CLFullRangeHookTest is Test, Deployers {
                 amount0Min: 0,
                 amount1Min: 0,
                 to: address(this),
-                deadline: MAX_DEADLINE
+                deadline: block.timestamp
             })
         );
     }
@@ -164,7 +162,7 @@ contract CLFullRangeHookTest is Test, Deployers {
                 amount0Min: 0,
                 amount1Min: 0,
                 to: address(this),
-                deadline: MAX_DEADLINE
+                deadline: block.timestamp
             })
         );
 
@@ -176,7 +174,7 @@ contract CLFullRangeHookTest is Test, Deployers {
                 fee: key.fee,
                 parameters: key.parameters,
                 liquidity: 1e18,
-                deadline: MAX_DEADLINE
+                deadline: block.timestamp
             })
         );
     }
@@ -195,7 +193,7 @@ contract CLFullRangeHookTest is Test, Deployers {
                 amount0Min: 0,
                 amount1Min: 0,
                 to: address(this),
-                deadline: MAX_DEADLINE
+                deadline: block.timestamp
             })
         );
 
@@ -224,7 +222,7 @@ contract CLFullRangeHookTest is Test, Deployers {
                 amount0Min: 10 ether,
                 amount1Min: 10 ether,
                 to: address(this),
-                deadline: MAX_DEADLINE
+                deadline: block.timestamp
             })
         );
     }
@@ -246,19 +244,19 @@ contract CLFullRangeHookTest is Test, Deployers {
                 amount0Min: 0,
                 amount1Min: 0,
                 to: address(this),
-                deadline: MAX_DEADLINE
+                deadline: block.timestamp
             })
         );
 
         (bool hasAccruedFees, address liquidityToken) = fullRange.poolInfo(id);
         uint256 liquidityTokenBalance = PancakeV4ERC20(liquidityToken).balanceOf(address(this));
 
-        assertEq(poolManager.getLiquidity(id), liquidityTokenBalance + LOCKED_LIQUIDITY);
+        assertEq(poolManager.getLiquidity(id), liquidityTokenBalance + MINIMUM_LIQUIDITY);
 
         assertEq(key.currency0.balanceOf(address(this)), prevBalance0 - 10 ether);
         assertEq(key.currency1.balanceOf(address(this)), prevBalance1 - 10 ether);
 
-        assertEq(liquidityTokenBalance, 10 ether - LOCKED_LIQUIDITY);
+        assertEq(liquidityTokenBalance, 10 ether - MINIMUM_LIQUIDITY);
         assertEq(hasAccruedFees, false);
 
         swapRouter.exactInputSingle(
@@ -288,7 +286,7 @@ contract CLFullRangeHookTest is Test, Deployers {
                 amount0Min: 0,
                 amount1Min: 0,
                 to: address(this),
-                deadline: MAX_DEADLINE
+                deadline: block.timestamp
             })
         );
 
@@ -319,7 +317,7 @@ contract CLFullRangeHookTest is Test, Deployers {
                 amount0Min: 0,
                 amount1Min: 0,
                 to: address(this),
-                deadline: MAX_DEADLINE
+                deadline: block.timestamp
             })
         );
     }
@@ -327,7 +325,7 @@ contract CLFullRangeHookTest is Test, Deployers {
     function testFuzz_AddLiquidity(uint256 amount) public {
         poolManager.initialize(key, SQRT_RATIO_1_1, ZERO_BYTES);
 
-        if (amount < LOCKED_LIQUIDITY) {
+        if (amount <= MINIMUM_LIQUIDITY) {
             vm.expectRevert(CLFullRange.LiquidityDoesntMeetMinimum.selector);
             fullRange.addLiquidity(
                 CLFullRange.AddLiquidityParams({
@@ -340,7 +338,7 @@ contract CLFullRangeHookTest is Test, Deployers {
                     amount0Min: 0,
                     amount1Min: 0,
                     to: address(this),
-                    deadline: MAX_DEADLINE
+                    deadline: block.timestamp
                 })
             );
         } else if (amount > MAX_TICK_LIQUIDITY) {
@@ -356,7 +354,7 @@ contract CLFullRangeHookTest is Test, Deployers {
                     amount0Min: 0,
                     amount1Min: 0,
                     to: address(this),
-                    deadline: MAX_DEADLINE
+                    deadline: block.timestamp
                 })
             );
         } else {
@@ -371,14 +369,14 @@ contract CLFullRangeHookTest is Test, Deployers {
                     amount0Min: 0,
                     amount1Min: 0,
                     to: address(this),
-                    deadline: MAX_DEADLINE
+                    deadline: block.timestamp
                 })
             );
 
             (bool hasAccruedFees, address liquidityToken) = fullRange.poolInfo(id);
             uint256 liquidityTokenBalance = PancakeV4ERC20(liquidityToken).balanceOf(address(this));
 
-            assertEq(poolManager.getLiquidity(id), liquidityTokenBalance + LOCKED_LIQUIDITY);
+            assertEq(poolManager.getLiquidity(id), liquidityTokenBalance + MINIMUM_LIQUIDITY);
             assertEq(hasAccruedFees, false);
         }
     }
@@ -398,7 +396,7 @@ contract CLFullRangeHookTest is Test, Deployers {
                 fee: key.fee,
                 parameters: key.parameters,
                 liquidity: 1e18,
-                deadline: MAX_DEADLINE
+                deadline: block.timestamp
             })
         );
     }
@@ -418,15 +416,15 @@ contract CLFullRangeHookTest is Test, Deployers {
                 fee: keyWithLiq.fee,
                 parameters: keyWithLiq.parameters,
                 liquidity: 1e18,
-                deadline: MAX_DEADLINE
+                deadline: block.timestamp
             })
         );
 
         (bool hasAccruedFees,) = fullRange.poolInfo(idWithLiq);
         uint256 liquidityTokenBalance = PancakeV4ERC20(liquidityToken).balanceOf(address(this));
 
-        assertEq(poolManager.getLiquidity(idWithLiq), liquidityTokenBalance + LOCKED_LIQUIDITY);
-        assertEq(PancakeV4ERC20(liquidityToken).balanceOf(address(this)), 99 ether - LOCKED_LIQUIDITY + 5);
+        assertEq(poolManager.getLiquidity(idWithLiq), liquidityTokenBalance + MINIMUM_LIQUIDITY);
+        assertEq(PancakeV4ERC20(liquidityToken).balanceOf(address(this)), 99 ether - MINIMUM_LIQUIDITY + 5);
         assertEq(keyWithLiq.currency0.balanceOf(address(this)), prevBalance0 + 1 ether - 1);
         assertEq(keyWithLiq.currency1.balanceOf(address(this)), prevBalance1 + 1 ether - 1);
         assertEq(hasAccruedFees, false);
@@ -446,7 +444,7 @@ contract CLFullRangeHookTest is Test, Deployers {
                 amount0Min: 0,
                 amount1Min: 0,
                 to: address(this),
-                deadline: MAX_DEADLINE
+                deadline: block.timestamp
             })
         );
 
@@ -463,7 +461,7 @@ contract CLFullRangeHookTest is Test, Deployers {
                     fee: key.fee,
                     parameters: key.parameters,
                     liquidity: amount,
-                    deadline: MAX_DEADLINE
+                    deadline: block.timestamp
                 })
             );
         } else {
@@ -476,7 +474,7 @@ contract CLFullRangeHookTest is Test, Deployers {
                     fee: key.fee,
                     parameters: key.parameters,
                     liquidity: amount,
-                    deadline: MAX_DEADLINE
+                    deadline: block.timestamp
                 })
             );
 
@@ -484,7 +482,7 @@ contract CLFullRangeHookTest is Test, Deployers {
             (bool hasAccruedFees,) = fullRange.poolInfo(id);
 
             assertEq(prevLiquidityTokenBalance - liquidityTokenBalance, amount);
-            assertEq(poolManager.getLiquidity(id), liquidityTokenBalance + LOCKED_LIQUIDITY);
+            assertEq(poolManager.getLiquidity(id), liquidityTokenBalance + MINIMUM_LIQUIDITY);
             assertEq(hasAccruedFees, false);
         }
     }
