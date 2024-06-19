@@ -8,14 +8,14 @@ import {IHooks} from "@pancakeswap/v4-core/src/interfaces/IHooks.sol";
 import {IBinPoolManager} from "@pancakeswap/v4-core/src/pool-bin/interfaces/IBinPoolManager.sol";
 import {BinPoolManager} from "@pancakeswap/v4-core/src/pool-bin/BinPoolManager.sol";
 import {PoolId, PoolIdLibrary} from "@pancakeswap/v4-core/src/types/PoolId.sol";
-import {FeeLibrary} from "@pancakeswap/v4-core/src/libraries/FeeLibrary.sol";
+import {LPFeeLibrary} from "@pancakeswap/v4-core/src/libraries/LPFeeLibrary.sol";
 import {SortTokens} from "@pancakeswap/v4-core/test/helpers/SortTokens.sol";
 import {PoolKey} from "@pancakeswap/v4-core/src/types/PoolKey.sol";
 import {Vault} from "@pancakeswap/v4-core/src/Vault.sol";
 import {IVault} from "@pancakeswap/v4-core/src/interfaces/IVault.sol";
 
 contract Deployers {
-    using FeeLibrary for uint24;
+    using LPFeeLibrary for uint24;
     using PoolIdLibrary for PoolKey;
 
     bytes constant ZERO_BYTES = new bytes(0);
@@ -55,7 +55,7 @@ contract Deployers {
             hooks,
             manager,
             fee,
-            fee.isDynamicFee()
+            fee.isDynamicLPFee()
                 ? bytes32(uint256((60 << 16) | 0x00ff))
                 : bytes32(uint256(((fee / 100 * 2) << 16) | 0x00ff))
         );
@@ -66,6 +66,6 @@ contract Deployers {
     function createFreshManager() internal returns (IVault vault, BinPoolManager manager) {
         vault = new Vault();
         manager = new BinPoolManager(vault, 500000);
-        vault.registerPoolManager(address(manager));
+        vault.registerApp(address(manager));
     }
 }

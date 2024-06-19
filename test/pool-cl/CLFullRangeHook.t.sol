@@ -10,7 +10,6 @@ import {Vault} from "@pancakeswap/v4-core/src/Vault.sol";
 import {Currency, CurrencyLibrary} from "@pancakeswap/v4-core/src/types/Currency.sol";
 import {PoolKey} from "@pancakeswap/v4-core/src/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "@pancakeswap/v4-core/src/types/PoolId.sol";
-import {FeeLibrary} from "@pancakeswap/v4-core/src/libraries/FeeLibrary.sol";
 import {CLPoolParametersHelper} from "@pancakeswap/v4-core/src/pool-cl/libraries/CLPoolParametersHelper.sol";
 import {TickMath} from "@pancakeswap/v4-core/src/pool-cl/libraries/TickMath.sol";
 import {SortTokens} from "@pancakeswap/v4-core/test/helpers/SortTokens.sol";
@@ -27,7 +26,6 @@ import {PancakeV4ERC20} from "../../src/pool-cl/full-range/libraries/PancakeV4ER
 
 contract CLFullRangeHookTest is Test, Deployers {
     using PoolIdLibrary for PoolKey;
-    using FeeLibrary for uint24;
     using CLPoolParametersHelper for bytes32;
     using CurrencyLibrary for Currency;
 

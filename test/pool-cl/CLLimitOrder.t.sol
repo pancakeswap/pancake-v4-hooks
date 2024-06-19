@@ -10,7 +10,6 @@ import {Vault} from "@pancakeswap/v4-core/src/Vault.sol";
 import {Currency} from "@pancakeswap/v4-core/src/types/Currency.sol";
 import {PoolKey} from "@pancakeswap/v4-core/src/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "@pancakeswap/v4-core/src/types/PoolId.sol";
-import {FeeLibrary} from "@pancakeswap/v4-core/src/libraries/FeeLibrary.sol";
 import {CLPoolParametersHelper} from "@pancakeswap/v4-core/src/pool-cl/libraries/CLPoolParametersHelper.sol";
 import {TickMath} from "@pancakeswap/v4-core/src/pool-cl/libraries/TickMath.sol";
 import {SortTokens} from "@pancakeswap/v4-core/test/helpers/SortTokens.sol";
@@ -26,7 +25,6 @@ import {CLLimitOrder, Epoch, EpochLibrary} from "../../src/pool-cl/limit-order/C
 
 contract CLLimitOrderHookTest is Test, Deployers {
     using PoolIdLibrary for PoolKey;
-    using FeeLibrary for uint24;
     using CLPoolParametersHelper for bytes32;
 
     uint160 constant SQRT_RATIO_10_1 = 250541448375047931186413801569;
@@ -80,6 +78,7 @@ contract CLLimitOrderHookTest is Test, Deployers {
                 poolKey: key,
                 tickLower: -120,
                 tickUpper: 120,
+                salt: bytes32(0),
                 amount0Desired: 1e18,
                 amount1Desired: 1e18,
                 amount0Min: 0,
@@ -123,7 +122,7 @@ contract CLLimitOrderHookTest is Test, Deployers {
         uint128 liquidity = 1000000;
         limitOrder.place(key, tickLower, zeroForOne, liquidity);
         assertTrue(EpochLibrary.equals(limitOrder.getEpoch(key, tickLower, zeroForOne), Epoch.wrap(1)));
-        assertEq(poolManager.getLiquidity(id, address(limitOrder), tickLower, tickLower + 60), liquidity);
+        assertEq(poolManager.getLiquidity(id, address(limitOrder), tickLower, tickLower + 60, bytes32(0)), liquidity);
     }
 
     function testZeroForOneLeftBoundaryOfCurrentRange() public {
@@ -132,7 +131,7 @@ contract CLLimitOrderHookTest is Test, Deployers {
         uint128 liquidity = 1000000;
         limitOrder.place(key, tickLower, zeroForOne, liquidity);
         assertTrue(EpochLibrary.equals(limitOrder.getEpoch(key, tickLower, zeroForOne), Epoch.wrap(1)));
-        assertEq(poolManager.getLiquidity(id, address(limitOrder), tickLower, tickLower + 60), liquidity);
+        assertEq(poolManager.getLiquidity(id, address(limitOrder), tickLower, tickLower + 60, bytes32(0)), liquidity);
     }
 
     function testZeroForOneCrossedRangeRevert() public {
@@ -165,7 +164,7 @@ contract CLLimitOrderHookTest is Test, Deployers {
         uint128 liquidity = 1000000;
         limitOrder.place(key, tickLower, zeroForOne, liquidity);
         assertTrue(EpochLibrary.equals(limitOrder.getEpoch(key, tickLower, zeroForOne), Epoch.wrap(1)));
-        assertEq(poolManager.getLiquidity(id, address(limitOrder), tickLower, tickLower + 60), liquidity);
+        assertEq(poolManager.getLiquidity(id, address(limitOrder), tickLower, tickLower + 60, bytes32(0)), liquidity);
     }
 
     function testNotZeroForOneCrossedRangeRevert() public {
@@ -206,7 +205,9 @@ contract CLLimitOrderHookTest is Test, Deployers {
         limitOrder.place(key, tickLower, zeroForOne, liquidity);
         vm.stopPrank();
         assertTrue(EpochLibrary.equals(limitOrder.getEpoch(key, tickLower, zeroForOne), Epoch.wrap(1)));
-        assertEq(poolManager.getLiquidity(id, address(limitOrder), tickLower, tickLower + 60), liquidity * 2);
+        assertEq(
+            poolManager.getLiquidity(id, address(limitOrder), tickLower, tickLower + 60, bytes32(0)), liquidity * 2
+        );
 
         (bool filled,,, uint256 token0Total, uint256 token1Total, uint128 liquidityTotal) =
             limitOrder.epochInfos(Epoch.wrap(1));
@@ -258,7 +259,7 @@ contract CLLimitOrderHookTest is Test, Deployers {
         assertTrue(filled);
         assertEq(token0Total, 0);
         assertEq(token1Total, 2996 + 17); // 3013, 2 wei of dust
-        assertEq(poolManager.getLiquidity(id, address(limitOrder), tickLower, tickLower + 60), 0);
+        assertEq(poolManager.getLiquidity(id, address(limitOrder), tickLower, tickLower + 60, bytes32(0)), 0);
 
         vm.expectEmit(true, true, true, true, address(token1));
         emit Transfer(address(vault), address(this), 2996 + 17);

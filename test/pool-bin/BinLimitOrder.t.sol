@@ -10,7 +10,6 @@ import {Vault} from "@pancakeswap/v4-core/src/Vault.sol";
 import {Currency} from "@pancakeswap/v4-core/src/types/Currency.sol";
 import {PoolKey} from "@pancakeswap/v4-core/src/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "@pancakeswap/v4-core/src/types/PoolId.sol";
-import {FeeLibrary} from "@pancakeswap/v4-core/src/libraries/FeeLibrary.sol";
 import {BinPoolParametersHelper} from "@pancakeswap/v4-core/src/pool-bin/libraries/BinPoolParametersHelper.sol";
 import {BinPosition} from "@pancakeswap/v4-core/src/pool-bin/libraries/BinPosition.sol";
 import {Constants} from "@pancakeswap/v4-core/src/pool-bin/libraries/Constants.sol";
@@ -27,7 +26,6 @@ import {Deployers} from "./helpers/Deployers.sol";
 
 contract BinLimitOrderHookTest is Test, Deployers {
     using PoolIdLibrary for PoolKey;
-    using FeeLibrary for uint24;
     using BinPoolParametersHelper for bytes32;
 
     uint24 constant BIN_ID_1_1 = 2 ** 23;
@@ -53,7 +51,7 @@ contract BinLimitOrderHookTest is Test, Deployers {
         limitOrder = new BinLimitOrder(poolManager);
 
         bfp = new BinFungiblePositionManager(vault, poolManager, address(0));
-        swapRouter = new BinSwapRouter(poolManager, vault, address(0));
+        swapRouter = new BinSwapRouter(vault, poolManager, address(0));
 
         address[3] memory approvalAddress = [address(bfp), address(swapRouter), address(limitOrder)];
         for (uint256 i; i < approvalAddress.length; i++) {
@@ -167,7 +165,7 @@ contract BinLimitOrderHookTest is Test, Deployers {
         vm.stopPrank();
 
         assertTrue(EpochLibrary.equals(limitOrder.getEpoch(key, binId, swapForY), Epoch.wrap(1)));
-        BinPosition.Info memory position = poolManager.getPosition(id, address(limitOrder), binId);
+        BinPosition.Info memory position = poolManager.getPosition(id, address(limitOrder), binId, bytes32(0));
         assertEq(position.share, 2 * 342324061122464094244154855076358820724000000000000000000);
 
         (bool filled,,, uint256 token0Total, uint256 token1Total, uint256 liquidityTotal) =
@@ -222,7 +220,7 @@ contract BinLimitOrderHookTest is Test, Deployers {
         assertTrue(filled);
         assertEq(token0Total, 0);
         assertEq(token1Total, 1.006e18);
-        BinPosition.Info memory position = poolManager.getPosition(id, address(limitOrder), BIN_ID_1_1 + 1);
+        BinPosition.Info memory position = poolManager.getPosition(id, address(limitOrder), BIN_ID_1_1 + 1, bytes32(0));
         assertEq(position.share, 0);
 
         vm.expectEmit(true, true, true, true, Currency.unwrap(key.currency1));
