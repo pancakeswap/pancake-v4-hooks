@@ -127,7 +127,10 @@ contract BinLimitOrder is BinBaseHook {
                 afterSwap: true,
                 beforeDonate: false,
                 afterDonate: false,
-                noOp: false
+                beforeSwapReturnDelta: false,
+                afterSwapReturnDelta: false,
+                afterMintReturnDelta: false,
+                afterBurnReturnDelta: false
             })
         );
     }
@@ -167,12 +170,12 @@ contract BinLimitOrder is BinBaseHook {
         address sender,
         PoolKey calldata key,
         bool swapForY,
-        uint128 amountIn,
+        int128 amountSpecified,
         BalanceDelta delta,
         bytes calldata hookData
-    ) external override returns (bytes4) {
+    ) external override returns (bytes4, int128) {
         (uint24 activeId, uint24 lower, uint24 upper) = _getCrossedBins(key.toId());
-        if (lower > upper) return this.afterSwap.selector;
+        if (lower > upper) return (this.afterSwap.selector, 0);
 
         // note that a swapForY swap means that the pool is actually gaining token0, so limit
         // order fills are the opposite of swap fills, hence the inversion below
@@ -181,7 +184,7 @@ contract BinLimitOrder is BinBaseHook {
         }
 
         setActiveIdLast(key.toId(), activeId);
-        return this.afterSwap.selector;
+        return (this.afterSwap.selector, 0);
     }
 
     function _fillEpoch(PoolKey calldata key, uint24 binId, bool swapForY) internal {
@@ -195,16 +198,17 @@ contract BinLimitOrder is BinBaseHook {
             ids[0] = binId;
             uint256[] memory amounts = new uint256[](1);
             amounts[0] = uint256(epochInfo.liquidityTotal);
-            BalanceDelta delta =
-                poolManager.burn(key, IBinPoolManager.BurnParams({ids: ids, amountsToBurn: amounts}), ZERO_BYTES);
+            BalanceDelta delta = poolManager.burn(
+                key, IBinPoolManager.BurnParams({ids: ids, amountsToBurn: amounts, salt: bytes32(0)}), ZERO_BYTES
+            );
 
             uint256 amount0;
             uint256 amount1;
             if (delta.amount0() < 0) {
-                vault.mint(key.currency0, address(this), amount0 = uint128(-delta.amount0()));
+                vault.mint(address(this), key.currency0, amount0 = uint128(-delta.amount0()));
             }
             if (delta.amount1() < 0) {
-                vault.mint(key.currency1, address(this), amount1 = uint128(-delta.amount1()));
+                vault.mint(address(this), key.currency1, amount1 = uint128(-delta.amount1()));
             }
 
             unchecked {
@@ -297,7 +301,9 @@ contract BinLimitOrder is BinBaseHook {
         liquidityConfigs[0] = LiquidityConfigurations.encodeParams(distributionX, distributionY, binId);
 
         (BalanceDelta delta, BinPool.MintArrays memory mintArray) = poolManager.mint(
-            key, IBinPoolManager.MintParams({liquidityConfigs: liquidityConfigs, amountIn: amountIn}), ZERO_BYTES
+            key,
+            IBinPoolManager.MintParams({liquidityConfigs: liquidityConfigs, amountIn: amountIn, salt: bytes32(0)}),
+            ZERO_BYTES
         );
 
         liquidity = mintArray.liquidityMinted[0];
@@ -363,8 +369,9 @@ contract BinLimitOrder is BinBaseHook {
         ids[0] = binId;
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = liquidityDelta;
-        BalanceDelta delta =
-            poolManager.burn(key, IBinPoolManager.BurnParams({ids: ids, amountsToBurn: amounts}), ZERO_BYTES);
+        BalanceDelta delta = poolManager.burn(
+            key, IBinPoolManager.BurnParams({ids: ids, amountsToBurn: amounts, salt: bytes32(0)}), ZERO_BYTES
+        );
 
         if (delta.amount0() < 0) {
             vault.take(key.currency0, to, amount0 = uint128(-delta.amount0()));
@@ -414,11 +421,11 @@ contract BinLimitOrder is BinBaseHook {
         address to
     ) external selfOnly {
         if (token0Amount > 0) {
-            vault.burn(currency0, token0Amount);
+            vault.burn(address(this), currency0, token0Amount);
             vault.take(currency0, to, token0Amount);
         }
         if (token1Amount > 0) {
-            vault.burn(currency1, token1Amount);
+            vault.burn(address(this), currency1, token1Amount);
             vault.take(currency1, to, token1Amount);
         }
     }

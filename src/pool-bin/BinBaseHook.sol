@@ -12,10 +12,14 @@ import {
     HOOKS_AFTER_SWAP_OFFSET,
     HOOKS_BEFORE_DONATE_OFFSET,
     HOOKS_AFTER_DONATE_OFFSET,
-    HOOKS_NO_OP_OFFSET
+    HOOKS_BEFORE_SWAP_RETURNS_DELTA_OFFSET,
+    HOOKS_AFTER_SWAP_RETURNS_DELTA_OFFSET,
+    HOOKS_AFTER_MINT_RETURNS_DELTA_OFFSET,
+    HOOKS_AFTER_BURN_RETURNS_DELTA_OFFSET
 } from "@pancakeswap/v4-core/src/pool-bin/interfaces/IBinHooks.sol";
 import {PoolKey} from "@pancakeswap/v4-core/src/types/PoolKey.sol";
 import {BalanceDelta} from "@pancakeswap/v4-core/src/types/BalanceDelta.sol";
+import {BeforeSwapDelta} from "@pancakeswap/v4-core/src/types/BeforeSwapDelta.sol";
 import {IHooks} from "@pancakeswap/v4-core/src/interfaces/IHooks.sol";
 import {IVault} from "@pancakeswap/v4-core/src/interfaces/IVault.sol";
 import {IBinHooks} from "@pancakeswap/v4-core/src/pool-bin/interfaces/IBinHooks.sol";
@@ -53,7 +57,10 @@ abstract contract BinBaseHook is IBinHooks {
         bool afterSwap;
         bool beforeDonate;
         bool afterDonate;
-        bool noOp;
+        bool beforeSwapReturnDelta;
+        bool afterSwapReturnDelta;
+        bool afterMintReturnDelta;
+        bool afterBurnReturnDelta;
     }
 
     /// @notice The address of the pool manager
@@ -126,7 +133,7 @@ abstract contract BinBaseHook is IBinHooks {
     function afterMint(address, PoolKey calldata, IBinPoolManager.MintParams calldata, BalanceDelta, bytes calldata)
         external
         virtual
-        returns (bytes4)
+        returns (bytes4, BalanceDelta)
     {
         revert HookNotImplemented();
     }
@@ -144,21 +151,25 @@ abstract contract BinBaseHook is IBinHooks {
     function afterBurn(address, PoolKey calldata, IBinPoolManager.BurnParams calldata, BalanceDelta, bytes calldata)
         external
         virtual
-        returns (bytes4)
+        returns (bytes4, BalanceDelta)
     {
         revert HookNotImplemented();
     }
 
     /// @inheritdoc IBinHooks
-    function beforeSwap(address, PoolKey calldata, bool, uint128, bytes calldata) external virtual returns (bytes4) {
+    function beforeSwap(address, PoolKey calldata, bool, int128, bytes calldata)
+        external
+        virtual
+        returns (bytes4, BeforeSwapDelta, uint24)
+    {
         revert HookNotImplemented();
     }
 
     /// @inheritdoc IBinHooks
-    function afterSwap(address, PoolKey calldata, bool, uint128, BalanceDelta, bytes calldata)
+    function afterSwap(address, PoolKey calldata, bool, int128, BalanceDelta, bytes calldata)
         external
         virtual
-        returns (bytes4)
+        returns (bytes4, int128)
     {
         revert HookNotImplemented();
     }
@@ -181,7 +192,7 @@ abstract contract BinBaseHook is IBinHooks {
         revert HookNotImplemented();
     }
 
-    /// @dev A convenience method to construct the hook registration map.
+    /// @dev Helper function to construct the hook registration map
     function _hooksRegistrationBitmapFrom(Permissions memory permissions) internal pure returns (uint16) {
         return uint16(
             (permissions.beforeInitialize ? 1 << HOOKS_BEFORE_INITIALIZE_OFFSET : 0)
@@ -194,7 +205,10 @@ abstract contract BinBaseHook is IBinHooks {
                 | (permissions.afterSwap ? 1 << HOOKS_AFTER_SWAP_OFFSET : 0)
                 | (permissions.beforeDonate ? 1 << HOOKS_BEFORE_DONATE_OFFSET : 0)
                 | (permissions.afterDonate ? 1 << HOOKS_AFTER_DONATE_OFFSET : 0)
-                | (permissions.noOp ? 1 << HOOKS_NO_OP_OFFSET : 0)
+                | (permissions.beforeSwapReturnDelta ? 1 << HOOKS_BEFORE_SWAP_RETURNS_DELTA_OFFSET : 0)
+                | (permissions.afterSwapReturnDelta ? 1 << HOOKS_AFTER_SWAP_RETURNS_DELTA_OFFSET : 0)
+                | (permissions.afterMintReturnDelta ? 1 << HOOKS_AFTER_MINT_RETURNS_DELTA_OFFSET : 0)
+                | (permissions.afterBurnReturnDelta ? 1 << HOOKS_AFTER_BURN_RETURNS_DELTA_OFFSET : 0)
         );
     }
 }

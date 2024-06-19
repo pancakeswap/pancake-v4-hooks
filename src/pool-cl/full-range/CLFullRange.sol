@@ -13,6 +13,7 @@ import {IVault} from "@pancakeswap/v4-core/src/interfaces/IVault.sol";
 import {PoolId, PoolIdLibrary} from "@pancakeswap/v4-core/src/types/PoolId.sol";
 import {Currency, CurrencyLibrary} from "@pancakeswap/v4-core/src/types/Currency.sol";
 import {BalanceDelta} from "@pancakeswap/v4-core/src/types/BalanceDelta.sol";
+import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "@pancakeswap/v4-core/src/types/BeforeSwapDelta.sol";
 import {PoolKey} from "@pancakeswap/v4-core/src/types/PoolKey.sol";
 import {Hooks} from "@pancakeswap/v4-core/src/libraries/Hooks.sol";
 import {SafeCast} from "@pancakeswap/v4-core/src/libraries/SafeCast.sol";
@@ -137,7 +138,10 @@ contract CLFullRange is CLBaseHook {
                 afterSwap: false,
                 beforeDonate: false,
                 afterDonate: false,
-                noOp: false
+                beforeSwapReturnsDelta: false,
+                afterSwapReturnsDelta: false,
+                afterAddLiquidiyReturnsDelta: false,
+                afterRemoveLiquidiyReturnsDelta: false
             })
         );
     }
@@ -184,7 +188,8 @@ contract CLFullRange is CLBaseHook {
             ICLPoolManager.ModifyLiquidityParams({
                 tickLower: MIN_TICK,
                 tickUpper: MAX_TICK,
-                liquidityDelta: liquidity.toInt256()
+                liquidityDelta: liquidity.toInt256(),
+                salt: bytes32(0)
             })
         );
 
@@ -231,7 +236,8 @@ contract CLFullRange is CLBaseHook {
             ICLPoolManager.ModifyLiquidityParams({
                 tickLower: MIN_TICK,
                 tickUpper: MAX_TICK,
-                liquidityDelta: -(params.liquidity.toInt256())
+                liquidityDelta: -(params.liquidity.toInt256()),
+                salt: bytes32(0)
             })
         );
 
@@ -297,7 +303,7 @@ contract CLFullRange is CLBaseHook {
         external
         override
         poolManagerOnly
-        returns (bytes4)
+        returns (bytes4, BeforeSwapDelta, uint24)
     {
         PoolId poolId = key.toId();
 
@@ -306,7 +312,7 @@ contract CLFullRange is CLBaseHook {
             pool.hasAccruedFees = true;
         }
 
-        return this.beforeSwap.selector;
+        return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
     }
 
     function _modifyPosition(PoolKey memory key, ICLPoolManager.ModifyLiquidityParams memory params)
@@ -351,7 +357,7 @@ contract CLFullRange is CLBaseHook {
             _rebalance(key);
         }
 
-        delta = poolManager.modifyLiquidity(key, params, ZERO_BYTES);
+        (delta,) = poolManager.modifyLiquidity(key, params, ZERO_BYTES);
         pool.hasAccruedFees = false;
     }
 
@@ -376,7 +382,7 @@ contract CLFullRange is CLBaseHook {
         );
 
         params.liquidityDelta = -(liquidityToRemove.toInt256());
-        delta = poolManager.modifyLiquidity(key, params, ZERO_BYTES);
+        (delta,) = poolManager.modifyLiquidity(key, params, ZERO_BYTES);
         pool.hasAccruedFees = false;
     }
 
@@ -397,12 +403,13 @@ contract CLFullRange is CLBaseHook {
     /// @dev Rebalance the pool to fit the current price
     function _rebalance(PoolKey memory key) public {
         PoolId poolId = key.toId();
-        BalanceDelta balanceDelta = poolManager.modifyLiquidity(
+        (BalanceDelta balanceDelta,) = poolManager.modifyLiquidity(
             key,
             ICLPoolManager.ModifyLiquidityParams({
                 tickLower: MIN_TICK,
                 tickUpper: MAX_TICK,
-                liquidityDelta: -(poolManager.getLiquidity(poolId).toInt256())
+                liquidityDelta: -(poolManager.getLiquidity(poolId).toInt256()),
+                salt: bytes32(0)
             }),
             ZERO_BYTES
         );
@@ -433,12 +440,13 @@ contract CLFullRange is CLBaseHook {
             uint256(uint128(-balanceDelta.amount1()))
         );
 
-        BalanceDelta balanceDeltaAfter = poolManager.modifyLiquidity(
+        (BalanceDelta balanceDeltaAfter,) = poolManager.modifyLiquidity(
             key,
             ICLPoolManager.ModifyLiquidityParams({
                 tickLower: MIN_TICK,
                 tickUpper: MAX_TICK,
-                liquidityDelta: liquidity.toInt256()
+                liquidityDelta: liquidity.toInt256(),
+                salt: bytes32(0)
             }),
             ZERO_BYTES
         );

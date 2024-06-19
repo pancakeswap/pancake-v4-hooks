@@ -18,6 +18,8 @@ import {
 import {IPoolManager} from "@pancakeswap/v4-core/src/interfaces/IPoolManager.sol";
 import {PoolId, PoolIdLibrary} from "@pancakeswap/v4-core/src/types/PoolId.sol";
 import {PoolKey} from "@pancakeswap/v4-core/src/types/PoolKey.sol";
+import {BalanceDelta, BalanceDeltaLibrary} from "@pancakeswap/v4-core/src/types/BalanceDelta.sol";
+import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "@pancakeswap/v4-core/src/types/BeforeSwapDelta.sol";
 import {Hooks} from "@pancakeswap/v4-core/src/libraries/Hooks.sol";
 
 import {BinBaseHook} from "../BinBaseHook.sol";
@@ -56,7 +58,10 @@ contract BinGeomeanOracle is BinBaseHook {
                 afterSwap: false,
                 beforeDonate: false,
                 afterDonate: false,
-                noOp: false
+                beforeSwapReturnDelta: false,
+                afterSwapReturnDelta: false,
+                afterMintReturnDelta: false,
+                afterBurnReturnDelta: false
             })
         );
     }
@@ -101,14 +106,15 @@ contract BinGeomeanOracle is BinBaseHook {
         revert OraclePoolMustLockLiquidity();
     }
 
-    function beforeSwap(address sender, PoolKey calldata key, bool swapForY, uint128 amountIn, bytes calldata hookData)
-        external
-        override
-        poolManagerOnly
-        returns (bytes4)
-    {
+    function beforeSwap(
+        address sender,
+        PoolKey calldata key,
+        bool swapForY,
+        int128 amountSpecified,
+        bytes calldata hookData
+    ) external override poolManagerOnly returns (bytes4, BeforeSwapDelta, uint24) {
         _updatePool(key);
-        return this.beforeSwap.selector;
+        return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
     }
 
     /**
