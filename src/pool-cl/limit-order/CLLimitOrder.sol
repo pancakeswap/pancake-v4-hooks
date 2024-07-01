@@ -16,6 +16,7 @@ import {Hooks} from "@pancakeswap/v4-core/src/libraries/Hooks.sol";
 import {CLPoolManager} from "@pancakeswap/v4-core/src/pool-cl/CLPoolManager.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {CLBaseHook} from "../CLBaseHook.sol";
 
@@ -41,6 +42,7 @@ contract CLLimitOrder is CLBaseHook {
     using PoolIdLibrary for PoolKey;
     using CurrencyLibrary for Currency;
     using CLPoolParametersHelper for bytes32;
+    using SafeERC20 for IERC20;
 
     /// @notice Place/Kill/Withdraw zero liquidity
     error ZeroLiquidity();
@@ -202,11 +204,11 @@ contract CLLimitOrder is CLBaseHook {
 
             uint256 amount0;
             uint256 amount1;
-            if (delta.amount0() < 0) {
-                vault.mint(address(this), key.currency0, amount0 = uint128(-delta.amount0()));
+            if (delta.amount0() > 0) {
+                vault.mint(address(this), key.currency0, amount0 = uint128(delta.amount0()));
             }
-            if (delta.amount1() < 0) {
-                vault.mint(address(this), key.currency1, amount1 = uint128(-delta.amount1()));
+            if (delta.amount1() > 0) {
+                vault.mint(address(this), key.currency1, amount1 = uint128(delta.amount1()));
             }
 
             unchecked {
@@ -295,20 +297,20 @@ contract CLLimitOrder is CLBaseHook {
             ZERO_BYTES
         );
 
-        if (delta.amount0() > 0) {
+        if (delta.amount0() < 0) {
             if (delta.amount1() != 0) revert InRange();
             if (!zeroForOne) revert CrossedRange();
-            // TODO use safeTransferFrom
-            IERC20(Currency.unwrap(key.currency0)).transferFrom(
-                owner, address(vault), uint256(uint128(delta.amount0()))
+            vault.sync(key.currency0);
+            IERC20(Currency.unwrap(key.currency0)).safeTransferFrom(
+                owner, address(vault), uint256(uint128(-delta.amount0()))
             );
             vault.settle(key.currency0);
         } else {
             if (delta.amount0() != 0) revert InRange();
             if (zeroForOne) revert CrossedRange();
-            // TODO use safeTransferFrom
-            IERC20(Currency.unwrap(key.currency1)).transferFrom(
-                owner, address(vault), uint256(uint128(delta.amount1()))
+            vault.sync(key.currency1);
+            IERC20(Currency.unwrap(key.currency1)).safeTransferFrom(
+                owner, address(vault), uint256(uint128(-delta.amount1()))
             );
             vault.settle(key.currency1);
         }
@@ -381,11 +383,11 @@ contract CLLimitOrder is CLBaseHook {
                 ZERO_BYTES
             );
 
-            if (deltaFee.amount0() < 0) {
-                vault.mint(address(this), key.currency0, amount0Fee = uint128(-deltaFee.amount0()));
+            if (deltaFee.amount0() > 0) {
+                vault.mint(address(this), key.currency0, amount0Fee = uint128(deltaFee.amount0()));
             }
-            if (deltaFee.amount1() < 0) {
-                vault.mint(address(this), key.currency1, amount1Fee = uint128(-deltaFee.amount1()));
+            if (deltaFee.amount1() > 0) {
+                vault.mint(address(this), key.currency1, amount1Fee = uint128(deltaFee.amount1()));
             }
         }
 
@@ -400,11 +402,11 @@ contract CLLimitOrder is CLBaseHook {
             ZERO_BYTES
         );
 
-        if (delta.amount0() < 0) {
-            vault.take(key.currency0, to, amount0 = uint128(-delta.amount0()));
+        if (delta.amount0() > 0) {
+            vault.take(key.currency0, to, amount0 = uint128(delta.amount0()));
         }
-        if (delta.amount1() < 0) {
-            vault.take(key.currency1, to, amount1 = uint128(-delta.amount1()));
+        if (delta.amount1() > 0) {
+            vault.take(key.currency1, to, amount1 = uint128(delta.amount1()));
         }
     }
 
