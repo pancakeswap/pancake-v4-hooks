@@ -30,6 +30,7 @@ import {LiquidityConfigurations} from "@pancakeswap/v4-core/src/pool-bin/librari
 import {PackedUint128Math} from "@pancakeswap/v4-core/src/pool-bin/libraries/math/PackedUint128Math.sol";
 import {BinPool} from "@pancakeswap/v4-core/src/pool-bin/libraries/BinPool.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {BinBaseHook} from "../BinBaseHook.sol";
 
@@ -56,6 +57,7 @@ contract BinLimitOrder is BinBaseHook {
     using CurrencyLibrary for Currency;
     using BinPoolParametersHelper for bytes32;
     using PackedUint128Math for uint128;
+    using SafeERC20 for IERC20;
 
     /// @notice Place zero token amount
     error ZeroAmount();
@@ -204,11 +206,11 @@ contract BinLimitOrder is BinBaseHook {
 
             uint256 amount0;
             uint256 amount1;
-            if (delta.amount0() < 0) {
-                vault.mint(address(this), key.currency0, amount0 = uint128(-delta.amount0()));
+            if (delta.amount0() > 0) {
+                vault.mint(address(this), key.currency0, amount0 = uint128(delta.amount0()));
             }
-            if (delta.amount1() < 0) {
-                vault.mint(address(this), key.currency1, amount1 = uint128(-delta.amount1()));
+            if (delta.amount1() > 0) {
+                vault.mint(address(this), key.currency1, amount1 = uint128(delta.amount1()));
             }
 
             unchecked {
@@ -308,14 +310,16 @@ contract BinLimitOrder is BinBaseHook {
 
         liquidity = mintArray.liquidityMinted[0];
 
-        if (delta.amount0() > 0) {
-            IERC20(Currency.unwrap(key.currency0)).transferFrom(
-                owner, address(vault), uint256(uint128(delta.amount0()))
+        if (delta.amount0() < 0) {
+            vault.sync(key.currency0);
+            IERC20(Currency.unwrap(key.currency0)).safeTransferFrom(
+                owner, address(vault), uint256(uint128(-delta.amount0()))
             );
             vault.settle(key.currency0);
         } else {
-            IERC20(Currency.unwrap(key.currency1)).transferFrom(
-                owner, address(vault), uint256(uint128(delta.amount1()))
+            vault.sync(key.currency1);
+            IERC20(Currency.unwrap(key.currency1)).safeTransferFrom(
+                owner, address(vault), uint256(uint128(-delta.amount1()))
             );
             vault.settle(key.currency1);
         }
@@ -373,11 +377,11 @@ contract BinLimitOrder is BinBaseHook {
             key, IBinPoolManager.BurnParams({ids: ids, amountsToBurn: amounts, salt: bytes32(0)}), ZERO_BYTES
         );
 
-        if (delta.amount0() < 0) {
-            vault.take(key.currency0, to, amount0 = uint128(-delta.amount0()));
+        if (delta.amount0() > 0) {
+            vault.take(key.currency0, to, amount0 = uint128(delta.amount0()));
         }
-        if (delta.amount1() < 0) {
-            vault.take(key.currency1, to, amount1 = uint128(-delta.amount1()));
+        if (delta.amount1() > 0) {
+            vault.take(key.currency1, to, amount1 = uint128(delta.amount1()));
         }
     }
 
