@@ -226,7 +226,7 @@ contract CLLimitOrderHookTest is Test, Deployers {
         bool zeroForOne = true;
         uint128 liquidity = 1000000;
         limitOrder.place(key, tickLower, zeroForOne, liquidity);
-        vm.expectEmit(true, true, true, true, address(token0));
+        vm.expectEmit(true, true, false, true, address(token0));
         emit Transfer(address(vault), address(this), 2995);
         limitOrder.kill(key, tickLower, zeroForOne, address(this));
     }
@@ -261,7 +261,7 @@ contract CLLimitOrderHookTest is Test, Deployers {
         assertEq(token1Total, 2996 + 17); // 3013, 2 wei of dust
         assertEq(poolManager.getLiquidity(id, address(limitOrder), tickLower, tickLower + 60, bytes32(0)), 0);
 
-        vm.expectEmit(true, true, true, true, address(token1));
+        vm.expectEmit(true, true, false, true, address(token1));
         emit Transfer(address(vault), address(this), 2996 + 17);
         limitOrder.withdraw(Epoch.wrap(1), address(this));
 
