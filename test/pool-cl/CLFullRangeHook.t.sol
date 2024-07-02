@@ -35,7 +35,7 @@ contract CLFullRangeHookTest is Test, Deployers {
     int24 internal constant MAX_TICK = -MIN_TICK;
 
     uint16 constant MINIMUM_LIQUIDITY = 1000;
-    uint256 constant MAX_TICK_LIQUIDITY = 11505743598341114571880798222544994;
+    uint256 constant MAX_TICK_LIQUIDITY = 11505069308564788430434325881101412;
 
     IVault vault;
     ICLPoolManager poolManager;
@@ -333,8 +333,8 @@ contract CLFullRangeHookTest is Test, Deployers {
                     parameters: key.parameters,
                     amount0Desired: amount,
                     amount1Desired: amount,
-                    amount0Min: 0,
-                    amount1Min: 0,
+                    amount0Min: amount,
+                    amount1Min: amount,
                     to: address(this),
                     deadline: block.timestamp
                 })
@@ -349,8 +349,8 @@ contract CLFullRangeHookTest is Test, Deployers {
                     parameters: key.parameters,
                     amount0Desired: amount,
                     amount1Desired: amount,
-                    amount0Min: 0,
-                    amount1Min: 0,
+                    amount0Min: amount,
+                    amount1Min: amount,
                     to: address(this),
                     deadline: block.timestamp
                 })

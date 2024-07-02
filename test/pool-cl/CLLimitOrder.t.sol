@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
 
-import {Test} from "forge-std/Test.sol";
+import "forge-std/Test.sol";
 
 import {ICLPoolManager} from "@pancakeswap/v4-core/src/pool-cl/interfaces/ICLPoolManager.sol";
 import {IVault} from "@pancakeswap/v4-core/src/interfaces/IVault.sol";
@@ -226,9 +226,15 @@ contract CLLimitOrderHookTest is Test, Deployers {
         bool zeroForOne = true;
         uint128 liquidity = 1000000;
         limitOrder.place(key, tickLower, zeroForOne, liquidity);
-        vm.expectEmit(true, true, false, true, address(token0));
-        emit Transfer(address(vault), address(this), 2995);
+
+        vm.recordLogs();
         limitOrder.kill(key, tickLower, zeroForOne, address(this));
+
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        assertEq(entries[1].topics[0], Transfer.selector);
+        assertEq(entries[1].topics[1], bytes32(uint256(uint160(address(vault)))));
+        assertEq(entries[1].topics[2], bytes32(uint256(uint160(address(this)))));
+        assertEq(abi.decode(entries[1].data, (uint256)), 2995);
     }
 
     function testSwapAcrossRange() public {
@@ -258,12 +264,17 @@ contract CLLimitOrderHookTest is Test, Deployers {
 
         assertTrue(filled);
         assertEq(token0Total, 0);
-        assertEq(token1Total, 2996 + 17); // 3013, 2 wei of dust
+        assertEq(token1Total, 2996 + 17);
         assertEq(poolManager.getLiquidity(id, address(limitOrder), tickLower, tickLower + 60, bytes32(0)), 0);
 
-        vm.expectEmit(true, true, false, true, address(token1));
-        emit Transfer(address(vault), address(this), 2996 + 17);
+        vm.recordLogs();
         limitOrder.withdraw(Epoch.wrap(1), address(this));
+
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        assertEq(entries[1].topics[0], Transfer.selector);
+        assertEq(entries[1].topics[1], bytes32(uint256(uint160(address(vault)))));
+        assertEq(entries[1].topics[2], bytes32(uint256(uint160(address(this)))));
+        assertEq(abi.decode(entries[1].data, (uint256)), 2996 + 17);
 
         (,,, token0Total, token1Total,) = limitOrder.epochInfos(Epoch.wrap(1));
 
