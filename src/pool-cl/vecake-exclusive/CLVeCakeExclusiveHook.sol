@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 
 import {PoolKey} from "@pancakeswap/v4-core/src/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "@pancakeswap/v4-core/src/types/PoolId.sol";
-import {FeeLibrary} from "@pancakeswap/v4-core/src/libraries/FeeLibrary.sol";
+import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "@pancakeswap/v4-core/src/types/BeforeSwapDelta.sol";
 import {ICLPoolManager} from "@pancakeswap/v4-core/src/pool-cl/interfaces/ICLPoolManager.sol";
 
 import {CLBaseHook} from "../CLBaseHook.sol";
@@ -18,7 +18,6 @@ interface IVeCake {
 /// you a qualified holder
 contract CLVeCakeExclusiveHook is CLBaseHook {
     using PoolIdLibrary for PoolKey;
-    using FeeLibrary for uint24;
 
     IVeCake veCake;
 
@@ -41,7 +40,10 @@ contract CLVeCakeExclusiveHook is CLBaseHook {
                 afterSwap: false,
                 beforeDonate: false,
                 afterDonate: false,
-                noOp: false
+                beforeSwapReturnsDelta: false,
+                afterSwapReturnsDelta: false,
+                afterAddLiquidiyReturnsDelta: false,
+                afterRemoveLiquidiyReturnsDelta: false
             })
         );
     }
@@ -52,11 +54,11 @@ contract CLVeCakeExclusiveHook is CLBaseHook {
         external
         override
         poolManagerOnly
-        returns (bytes4)
+        returns (bytes4, BeforeSwapDelta, uint24)
     {
         if (veCake.balanceOf(tx.origin) < 1 ether) {
             revert NotVeCakeHolder();
         }
-        return this.beforeSwap.selector;
+        return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
     }
 }

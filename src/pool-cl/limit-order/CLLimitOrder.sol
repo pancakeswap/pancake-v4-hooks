@@ -16,6 +16,7 @@ import {Hooks} from "@pancakeswap/v4-core/src/libraries/Hooks.sol";
 import {CLPoolManager} from "@pancakeswap/v4-core/src/pool-cl/CLPoolManager.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {CLBaseHook} from "../CLBaseHook.sol";
 
@@ -41,6 +42,7 @@ contract CLLimitOrder is CLBaseHook {
     using PoolIdLibrary for PoolKey;
     using CurrencyLibrary for Currency;
     using CLPoolParametersHelper for bytes32;
+    using SafeERC20 for IERC20;
 
     /// @notice Place/Kill/Withdraw zero liquidity
     error ZeroLiquidity();
@@ -111,7 +113,10 @@ contract CLLimitOrder is CLBaseHook {
                 afterSwap: true,
                 beforeDonate: false,
                 afterDonate: false,
-                noOp: false
+                beforeSwapReturnsDelta: false,
+                afterSwapReturnsDelta: false,
+                afterAddLiquidiyReturnsDelta: false,
+                afterRemoveLiquidiyReturnsDelta: false
             })
         );
     }
@@ -163,10 +168,10 @@ contract CLLimitOrder is CLBaseHook {
         ICLPoolManager.SwapParams calldata params,
         BalanceDelta,
         bytes calldata
-    ) external override poolManagerOnly returns (bytes4) {
+    ) external override poolManagerOnly returns (bytes4, int128) {
         int24 tickSpacing = key.parameters.getTickSpacing();
         (int24 tickLower, int24 lower, int24 upper) = _getCrossedTicks(key.toId(), tickSpacing);
-        if (lower > upper) return this.afterSwap.selector;
+        if (lower > upper) return (this.afterSwap.selector, 0);
 
         // note that a zeroForOne swap means that the pool is actually gaining token0, so limit
         // order fills are the opposite of swap fills, hence the inversion below
@@ -176,7 +181,7 @@ contract CLLimitOrder is CLBaseHook {
         }
 
         setTickLowerLast(key.toId(), tickLower);
-        return this.afterSwap.selector;
+        return (this.afterSwap.selector, 0);
     }
 
     function _fillEpoch(PoolKey calldata key, int24 lower, bool zeroForOne) internal {
@@ -186,23 +191,24 @@ contract CLLimitOrder is CLBaseHook {
 
             epochInfo.filled = true;
 
-            BalanceDelta delta = poolManager.modifyLiquidity(
+            (BalanceDelta delta,) = poolManager.modifyLiquidity(
                 key,
                 ICLPoolManager.ModifyLiquidityParams({
                     tickLower: lower,
                     tickUpper: lower + key.parameters.getTickSpacing(),
-                    liquidityDelta: -int256(uint256(epochInfo.liquidityTotal))
+                    liquidityDelta: -int256(uint256(epochInfo.liquidityTotal)),
+                    salt: bytes32(0)
                 }),
                 ZERO_BYTES
             );
 
             uint256 amount0;
             uint256 amount1;
-            if (delta.amount0() < 0) {
-                vault.mint(key.currency0, address(this), amount0 = uint128(-delta.amount0()));
+            if (delta.amount0() > 0) {
+                vault.mint(address(this), key.currency0, amount0 = uint128(delta.amount0()));
             }
-            if (delta.amount1() < 0) {
-                vault.mint(key.currency1, address(this), amount1 = uint128(-delta.amount1()));
+            if (delta.amount1() > 0) {
+                vault.mint(address(this), key.currency1, amount1 = uint128(delta.amount1()));
             }
 
             unchecked {
@@ -280,30 +286,31 @@ contract CLLimitOrder is CLBaseHook {
         int256 liquidityDelta,
         address owner
     ) external selfOnly {
-        BalanceDelta delta = poolManager.modifyLiquidity(
+        (BalanceDelta delta,) = poolManager.modifyLiquidity(
             key,
             ICLPoolManager.ModifyLiquidityParams({
                 tickLower: tickLower,
                 tickUpper: tickLower + key.parameters.getTickSpacing(),
-                liquidityDelta: liquidityDelta
+                liquidityDelta: liquidityDelta,
+                salt: bytes32(0)
             }),
             ZERO_BYTES
         );
 
-        if (delta.amount0() > 0) {
+        if (delta.amount0() < 0) {
             if (delta.amount1() != 0) revert InRange();
             if (!zeroForOne) revert CrossedRange();
-            // TODO use safeTransferFrom
-            IERC20(Currency.unwrap(key.currency0)).transferFrom(
-                owner, address(vault), uint256(uint128(delta.amount0()))
+            vault.sync(key.currency0);
+            IERC20(Currency.unwrap(key.currency0)).safeTransferFrom(
+                owner, address(vault), uint256(uint128(-delta.amount0()))
             );
             vault.settle(key.currency0);
         } else {
             if (delta.amount0() != 0) revert InRange();
             if (zeroForOne) revert CrossedRange();
-            // TODO use safeTransferFrom
-            IERC20(Currency.unwrap(key.currency1)).transferFrom(
-                owner, address(vault), uint256(uint128(delta.amount1()))
+            vault.sync(key.currency1);
+            IERC20(Currency.unwrap(key.currency1)).safeTransferFrom(
+                owner, address(vault), uint256(uint128(-delta.amount1()))
             );
             vault.settle(key.currency1);
         }
@@ -365,35 +372,41 @@ contract CLLimitOrder is CLBaseHook {
         // could be unfairly diluted by a user sychronously placing then killing a limit order to skim off fees.
         // to prevent this, we allocate all fee revenue to remaining limit order placers, unless this is the last order.
         if (!removingAllLiquidity) {
-            BalanceDelta deltaFee = poolManager.modifyLiquidity(
+            (BalanceDelta deltaFee,) = poolManager.modifyLiquidity(
                 key,
-                ICLPoolManager.ModifyLiquidityParams({tickLower: tickLower, tickUpper: tickUpper, liquidityDelta: 0}),
+                ICLPoolManager.ModifyLiquidityParams({
+                    tickLower: tickLower,
+                    tickUpper: tickUpper,
+                    liquidityDelta: 0,
+                    salt: bytes32(0)
+                }),
                 ZERO_BYTES
             );
 
-            if (deltaFee.amount0() < 0) {
-                vault.mint(key.currency0, address(this), amount0Fee = uint128(-deltaFee.amount0()));
+            if (deltaFee.amount0() > 0) {
+                vault.mint(address(this), key.currency0, amount0Fee = uint128(deltaFee.amount0()));
             }
-            if (deltaFee.amount1() < 0) {
-                vault.mint(key.currency1, address(this), amount1Fee = uint128(-deltaFee.amount1()));
+            if (deltaFee.amount1() > 0) {
+                vault.mint(address(this), key.currency1, amount1Fee = uint128(deltaFee.amount1()));
             }
         }
 
-        BalanceDelta delta = poolManager.modifyLiquidity(
+        (BalanceDelta delta,) = poolManager.modifyLiquidity(
             key,
             ICLPoolManager.ModifyLiquidityParams({
                 tickLower: tickLower,
                 tickUpper: tickUpper,
-                liquidityDelta: liquidityDelta
+                liquidityDelta: liquidityDelta,
+                salt: bytes32(0)
             }),
             ZERO_BYTES
         );
 
-        if (delta.amount0() < 0) {
-            vault.take(key.currency0, to, amount0 = uint128(-delta.amount0()));
+        if (delta.amount0() > 0) {
+            vault.take(key.currency0, to, amount0 = uint128(delta.amount0()));
         }
-        if (delta.amount1() < 0) {
-            vault.take(key.currency1, to, amount1 = uint128(-delta.amount1()));
+        if (delta.amount1() > 0) {
+            vault.take(key.currency1, to, amount1 = uint128(delta.amount1()));
         }
     }
 
@@ -437,11 +450,11 @@ contract CLLimitOrder is CLBaseHook {
         address to
     ) external selfOnly {
         if (token0Amount > 0) {
-            vault.burn(currency0, token0Amount);
+            vault.burn(address(this), currency0, token0Amount);
             vault.take(currency0, to, token0Amount);
         }
         if (token1Amount > 0) {
-            vault.burn(currency1, token1Amount);
+            vault.burn(address(this), currency1, token1Amount);
             vault.take(currency1, to, token1Amount);
         }
     }

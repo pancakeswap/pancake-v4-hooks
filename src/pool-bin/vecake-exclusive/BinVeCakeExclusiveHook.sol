@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {PoolKey} from "@pancakeswap/v4-core/src/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "@pancakeswap/v4-core/src/types/PoolId.sol";
-import {FeeLibrary} from "@pancakeswap/v4-core/src/libraries/FeeLibrary.sol";
+import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "@pancakeswap/v4-core/src/types/BeforeSwapDelta.sol";
 import {IBinPoolManager} from "@pancakeswap/v4-core/src/pool-bin/interfaces/IBinPoolManager.sol";
 
 import {BinBaseHook} from "../BinBaseHook.sol";
@@ -17,7 +17,6 @@ interface IVeCake {
 /// you a qualified holder
 contract BinVeCakeExclusiveHook is BinBaseHook {
     using PoolIdLibrary for PoolKey;
-    using FeeLibrary for uint24;
 
     IVeCake veCake;
 
@@ -40,22 +39,25 @@ contract BinVeCakeExclusiveHook is BinBaseHook {
                 afterSwap: false,
                 beforeDonate: false,
                 afterDonate: false,
-                noOp: false
+                beforeSwapReturnDelta: false,
+                afterSwapReturnDelta: false,
+                afterMintReturnDelta: false,
+                afterBurnReturnDelta: false
             })
         );
     }
 
     /// @dev Using tx.origin is a workaround for now. Do NOT use this in
     /// production
-    function beforeSwap(address, PoolKey calldata, bool, uint128, bytes calldata)
+    function beforeSwap(address, PoolKey calldata, bool, int128, bytes calldata)
         external
         override
         poolManagerOnly
-        returns (bytes4)
+        returns (bytes4, BeforeSwapDelta, uint24)
     {
         if (veCake.balanceOf(tx.origin) < 1 ether) {
             revert NotVeCakeHolder();
         }
-        return this.beforeSwap.selector;
+        return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
     }
 }

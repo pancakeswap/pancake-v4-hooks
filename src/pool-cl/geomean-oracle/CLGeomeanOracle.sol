@@ -8,6 +8,7 @@ import {CLPoolParametersHelper} from "@pancakeswap/v4-core/src/pool-cl/libraries
 import {IPoolManager} from "@pancakeswap/v4-core/src/interfaces/IPoolManager.sol";
 import {PoolId, PoolIdLibrary} from "@pancakeswap/v4-core/src/types/PoolId.sol";
 import {PoolKey} from "@pancakeswap/v4-core/src/types/PoolKey.sol";
+import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "@pancakeswap/v4-core/src/types/BeforeSwapDelta.sol";
 import {Hooks} from "@pancakeswap/v4-core/src/libraries/Hooks.sol";
 
 import {CLBaseHook} from "../CLBaseHook.sol";
@@ -78,7 +79,10 @@ contract CLGeomeanOracle is CLBaseHook {
                 afterSwap: false,
                 beforeDonate: false,
                 afterDonate: false,
-                noOp: false
+                beforeSwapReturnsDelta: false,
+                afterSwapReturnsDelta: false,
+                afterAddLiquidiyReturnsDelta: false,
+                afterRemoveLiquidiyReturnsDelta: false
             })
         );
     }
@@ -151,10 +155,10 @@ contract CLGeomeanOracle is CLBaseHook {
         external
         override
         poolManagerOnly
-        returns (bytes4)
+        returns (bytes4, BeforeSwapDelta, uint24)
     {
         _updatePool(key);
-        return this.beforeSwap.selector;
+        return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
     }
 
     /// @notice Observe the given pool for the timestamps

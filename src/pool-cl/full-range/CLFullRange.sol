@@ -13,6 +13,7 @@ import {IVault} from "@pancakeswap/v4-core/src/interfaces/IVault.sol";
 import {PoolId, PoolIdLibrary} from "@pancakeswap/v4-core/src/types/PoolId.sol";
 import {Currency, CurrencyLibrary} from "@pancakeswap/v4-core/src/types/Currency.sol";
 import {BalanceDelta} from "@pancakeswap/v4-core/src/types/BalanceDelta.sol";
+import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "@pancakeswap/v4-core/src/types/BeforeSwapDelta.sol";
 import {PoolKey} from "@pancakeswap/v4-core/src/types/PoolKey.sol";
 import {Hooks} from "@pancakeswap/v4-core/src/libraries/Hooks.sol";
 import {SafeCast} from "@pancakeswap/v4-core/src/libraries/SafeCast.sol";
@@ -22,6 +23,7 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {CLBaseHook} from "../CLBaseHook.sol";
 import {LiquidityAmounts} from "./libraries/LiquidityAmounts.sol";
@@ -35,6 +37,7 @@ contract CLFullRange is CLBaseHook {
     using SafeCast for uint256;
     using SafeCast for uint128;
     using CLPoolParametersHelper for bytes32;
+    using SafeERC20 for IERC20;
 
     /// @notice Interact with a non-initialized pool
     error PoolNotInitialized();
@@ -137,7 +140,10 @@ contract CLFullRange is CLBaseHook {
                 afterSwap: false,
                 beforeDonate: false,
                 afterDonate: false,
-                noOp: false
+                beforeSwapReturnsDelta: false,
+                afterSwapReturnsDelta: false,
+                afterAddLiquidiyReturnsDelta: false,
+                afterRemoveLiquidiyReturnsDelta: false
             })
         );
     }
@@ -184,7 +190,8 @@ contract CLFullRange is CLBaseHook {
             ICLPoolManager.ModifyLiquidityParams({
                 tickLower: MIN_TICK,
                 tickUpper: MAX_TICK,
-                liquidityDelta: liquidity.toInt256()
+                liquidityDelta: liquidity.toInt256(),
+                salt: bytes32(0)
             })
         );
 
@@ -196,7 +203,7 @@ contract CLFullRange is CLBaseHook {
 
         PancakeV4ERC20(pool.liquidityToken).mint(params.to, liquidity);
 
-        if (uint128(addedDelta.amount0()) < params.amount0Min || uint128(addedDelta.amount1()) < params.amount1Min) {
+        if (uint128(-addedDelta.amount0()) < params.amount0Min || uint128(-addedDelta.amount1()) < params.amount1Min) {
             revert TooMuchSlippage();
         }
     }
@@ -231,7 +238,8 @@ contract CLFullRange is CLBaseHook {
             ICLPoolManager.ModifyLiquidityParams({
                 tickLower: MIN_TICK,
                 tickUpper: MAX_TICK,
-                liquidityDelta: -(params.liquidity.toInt256())
+                liquidityDelta: -(params.liquidity.toInt256()),
+                salt: bytes32(0)
             })
         );
 
@@ -297,7 +305,7 @@ contract CLFullRange is CLBaseHook {
         external
         override
         poolManagerOnly
-        returns (bytes4)
+        returns (bytes4, BeforeSwapDelta, uint24)
     {
         PoolId poolId = key.toId();
 
@@ -306,7 +314,7 @@ contract CLFullRange is CLBaseHook {
             pool.hasAccruedFees = true;
         }
 
-        return this.beforeSwap.selector;
+        return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
     }
 
     function _modifyPosition(PoolKey memory key, ICLPoolManager.ModifyLiquidityParams memory params)
@@ -317,26 +325,27 @@ contract CLFullRange is CLBaseHook {
     }
 
     function _settleDeltas(address sender, PoolKey memory key, BalanceDelta delta) internal {
-        _settleDelta(sender, key.currency0, uint128(delta.amount0()));
-        _settleDelta(sender, key.currency1, uint128(delta.amount1()));
+        _settleDelta(sender, key.currency0, uint128(-delta.amount0()));
+        _settleDelta(sender, key.currency1, uint128(-delta.amount1()));
     }
 
     function _settleDelta(address sender, Currency currency, uint128 amount) internal {
         if (currency.isNative()) {
             vault.settle{value: amount}(currency);
         } else {
+            vault.sync(currency);
             if (sender == address(this)) {
-                currency.transfer(address(vault), amount);
+                IERC20(Currency.unwrap(currency)).safeTransfer(address(vault), amount);
             } else {
-                IERC20(Currency.unwrap(currency)).transferFrom(sender, address(vault), amount);
+                IERC20(Currency.unwrap(currency)).safeTransferFrom(sender, address(vault), amount);
             }
             vault.settle(currency);
         }
     }
 
     function _takeDeltas(address sender, PoolKey memory key, BalanceDelta delta) internal {
-        vault.take(key.currency0, sender, uint256(uint128(-delta.amount0())));
-        vault.take(key.currency1, sender, uint256(uint128(-delta.amount1())));
+        vault.take(key.currency0, sender, uint256(uint128(delta.amount0())));
+        vault.take(key.currency1, sender, uint256(uint128(delta.amount1())));
     }
 
     /// @dev Rebalance first to ensure fair liquidity token amount distribution
@@ -351,7 +360,7 @@ contract CLFullRange is CLBaseHook {
             _rebalance(key);
         }
 
-        delta = poolManager.modifyLiquidity(key, params, ZERO_BYTES);
+        (delta,) = poolManager.modifyLiquidity(key, params, ZERO_BYTES);
         pool.hasAccruedFees = false;
     }
 
@@ -376,7 +385,7 @@ contract CLFullRange is CLBaseHook {
         );
 
         params.liquidityDelta = -(liquidityToRemove.toInt256());
-        delta = poolManager.modifyLiquidity(key, params, ZERO_BYTES);
+        (delta,) = poolManager.modifyLiquidity(key, params, ZERO_BYTES);
         pool.hasAccruedFees = false;
     }
 
@@ -397,19 +406,20 @@ contract CLFullRange is CLBaseHook {
     /// @dev Rebalance the pool to fit the current price
     function _rebalance(PoolKey memory key) public {
         PoolId poolId = key.toId();
-        BalanceDelta balanceDelta = poolManager.modifyLiquidity(
+        (BalanceDelta balanceDelta,) = poolManager.modifyLiquidity(
             key,
             ICLPoolManager.ModifyLiquidityParams({
                 tickLower: MIN_TICK,
                 tickUpper: MAX_TICK,
-                liquidityDelta: -(poolManager.getLiquidity(poolId).toInt256())
+                liquidityDelta: -(poolManager.getLiquidity(poolId).toInt256()),
+                salt: bytes32(0)
             }),
             ZERO_BYTES
         );
 
         uint160 newSqrtPriceX96 = (
             FixedPointMathLib.sqrt(
-                FullMath.mulDiv(uint128(-balanceDelta.amount1()), FixedPoint96.Q96, uint128(-balanceDelta.amount0()))
+                FullMath.mulDiv(uint128(balanceDelta.amount1()), FixedPoint96.Q96, uint128(balanceDelta.amount0()))
             ) * FixedPointMathLib.sqrt(FixedPoint96.Q96)
         ).toUint160();
 
@@ -429,23 +439,24 @@ contract CLFullRange is CLBaseHook {
             newSqrtPriceX96,
             TickMath.getSqrtRatioAtTick(MIN_TICK),
             TickMath.getSqrtRatioAtTick(MAX_TICK),
-            uint256(uint128(-balanceDelta.amount0())),
-            uint256(uint128(-balanceDelta.amount1()))
+            uint256(uint128(balanceDelta.amount0())),
+            uint256(uint128(balanceDelta.amount1()))
         );
 
-        BalanceDelta balanceDeltaAfter = poolManager.modifyLiquidity(
+        (BalanceDelta balanceDeltaAfter,) = poolManager.modifyLiquidity(
             key,
             ICLPoolManager.ModifyLiquidityParams({
                 tickLower: MIN_TICK,
                 tickUpper: MAX_TICK,
-                liquidityDelta: liquidity.toInt256()
+                liquidityDelta: liquidity.toInt256(),
+                salt: bytes32(0)
             }),
             ZERO_BYTES
         );
 
         // Donate any "dust" from the sqrtRatio change as fees
-        uint128 donateAmount0 = uint128(-balanceDelta.amount0() - balanceDeltaAfter.amount0());
-        uint128 donateAmount1 = uint128(-balanceDelta.amount1() - balanceDeltaAfter.amount1());
+        uint128 donateAmount0 = uint128(balanceDelta.amount0() + balanceDeltaAfter.amount0());
+        uint128 donateAmount1 = uint128(balanceDelta.amount1() + balanceDeltaAfter.amount1());
 
         poolManager.donate(key, donateAmount0, donateAmount1, ZERO_BYTES);
     }

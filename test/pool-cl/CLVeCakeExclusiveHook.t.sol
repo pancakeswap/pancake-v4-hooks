@@ -10,7 +10,6 @@ import {Vault} from "@pancakeswap/v4-core/src/Vault.sol";
 import {Currency} from "@pancakeswap/v4-core/src/types/Currency.sol";
 import {PoolKey} from "@pancakeswap/v4-core/src/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "@pancakeswap/v4-core/src/types/PoolId.sol";
-import {FeeLibrary} from "@pancakeswap/v4-core/src/libraries/FeeLibrary.sol";
 import {CLPoolParametersHelper} from "@pancakeswap/v4-core/src/pool-cl/libraries/CLPoolParametersHelper.sol";
 import {SortTokens} from "@pancakeswap/v4-core/test/helpers/SortTokens.sol";
 import {Deployers} from "@pancakeswap/v4-core/test/pool-cl/helpers/Deployers.sol";
@@ -25,7 +24,6 @@ import {CLVeCakeExclusiveHook} from "../../src/pool-cl/vecake-exclusive/CLVeCake
 
 contract CLVeCakeExclusiveHookTest is Test, Deployers {
     using PoolIdLibrary for PoolKey;
-    using FeeLibrary for uint24;
     using CLPoolParametersHelper for bytes32;
 
     uint160 constant SQRT_RATIO_10_1 = 250541448375047931186413801569;
@@ -83,6 +81,7 @@ contract CLVeCakeExclusiveHookTest is Test, Deployers {
                 poolKey: key,
                 tickLower: -120,
                 tickUpper: 120,
+                salt: bytes32(0),
                 amount0Desired: 1e18,
                 amount1Desired: 1e18,
                 amount0Min: 0,

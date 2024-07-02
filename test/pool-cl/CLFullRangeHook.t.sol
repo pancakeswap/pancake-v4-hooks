@@ -10,7 +10,6 @@ import {Vault} from "@pancakeswap/v4-core/src/Vault.sol";
 import {Currency, CurrencyLibrary} from "@pancakeswap/v4-core/src/types/Currency.sol";
 import {PoolKey} from "@pancakeswap/v4-core/src/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "@pancakeswap/v4-core/src/types/PoolId.sol";
-import {FeeLibrary} from "@pancakeswap/v4-core/src/libraries/FeeLibrary.sol";
 import {CLPoolParametersHelper} from "@pancakeswap/v4-core/src/pool-cl/libraries/CLPoolParametersHelper.sol";
 import {TickMath} from "@pancakeswap/v4-core/src/pool-cl/libraries/TickMath.sol";
 import {SortTokens} from "@pancakeswap/v4-core/test/helpers/SortTokens.sol";
@@ -27,7 +26,6 @@ import {PancakeV4ERC20} from "../../src/pool-cl/full-range/libraries/PancakeV4ER
 
 contract CLFullRangeHookTest is Test, Deployers {
     using PoolIdLibrary for PoolKey;
-    using FeeLibrary for uint24;
     using CLPoolParametersHelper for bytes32;
     using CurrencyLibrary for Currency;
 
@@ -37,7 +35,7 @@ contract CLFullRangeHookTest is Test, Deployers {
     int24 internal constant MAX_TICK = -MIN_TICK;
 
     uint16 constant MINIMUM_LIQUIDITY = 1000;
-    uint256 constant MAX_TICK_LIQUIDITY = 11505743598341114571880798222544994;
+    uint256 constant MAX_TICK_LIQUIDITY = 11505069308564788430434325881101412;
 
     IVault vault;
     ICLPoolManager poolManager;
@@ -335,8 +333,8 @@ contract CLFullRangeHookTest is Test, Deployers {
                     parameters: key.parameters,
                     amount0Desired: amount,
                     amount1Desired: amount,
-                    amount0Min: 0,
-                    amount1Min: 0,
+                    amount0Min: amount,
+                    amount1Min: amount,
                     to: address(this),
                     deadline: block.timestamp
                 })
@@ -351,8 +349,8 @@ contract CLFullRangeHookTest is Test, Deployers {
                     parameters: key.parameters,
                     amount0Desired: amount,
                     amount1Desired: amount,
-                    amount0Min: 0,
-                    amount1Min: 0,
+                    amount0Min: amount,
+                    amount1Min: amount,
                     to: address(this),
                     deadline: block.timestamp
                 })

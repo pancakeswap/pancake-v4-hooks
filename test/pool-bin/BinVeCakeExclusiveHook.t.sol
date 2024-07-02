@@ -10,7 +10,6 @@ import {Vault} from "@pancakeswap/v4-core/src/Vault.sol";
 import {Currency} from "@pancakeswap/v4-core/src/types/Currency.sol";
 import {PoolKey} from "@pancakeswap/v4-core/src/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "@pancakeswap/v4-core/src/types/PoolId.sol";
-import {FeeLibrary} from "@pancakeswap/v4-core/src/libraries/FeeLibrary.sol";
 import {BinPoolParametersHelper} from "@pancakeswap/v4-core/src/pool-bin/libraries/BinPoolParametersHelper.sol";
 import {Constants} from "@pancakeswap/v4-core/src/pool-bin/libraries/Constants.sol";
 import {SortTokens} from "@pancakeswap/v4-core/test/helpers/SortTokens.sol";
@@ -26,7 +25,6 @@ import {Deployers} from "./helpers/Deployers.sol";
 
 contract BinVeCakeExclusiveHookTest is Test, Deployers {
     using PoolIdLibrary for PoolKey;
-    using FeeLibrary for uint24;
     using BinPoolParametersHelper for bytes32;
 
     uint24 constant BIN_ID_1_1 = 2 ** 23;
@@ -58,7 +56,7 @@ contract BinVeCakeExclusiveHookTest is Test, Deployers {
         veCakeExclusiveHook = new BinVeCakeExclusiveHook(poolManager, address(veCake));
 
         bfp = new BinFungiblePositionManager(vault, poolManager, address(0));
-        swapRouter = new BinSwapRouter(poolManager, vault, address(0));
+        swapRouter = new BinSwapRouter(vault, poolManager, address(0));
 
         address[2] memory approvalAddress = [address(bfp), address(swapRouter)];
         for (uint256 i; i < approvalAddress.length; i++) {
