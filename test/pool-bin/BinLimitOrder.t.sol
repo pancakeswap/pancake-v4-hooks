@@ -14,16 +14,18 @@ import {BinPoolParametersHelper} from "pancake-v4-core/src/pool-bin/libraries/Bi
 import {BinPosition} from "pancake-v4-core/src/pool-bin/libraries/BinPosition.sol";
 import {Constants} from "pancake-v4-core/src/pool-bin/libraries/Constants.sol";
 import {SortTokens} from "pancake-v4-core/test/helpers/SortTokens.sol";
-import {IBinSwapRouterBase} from "pancake-v4-periphery/src/pool-bin/interfaces/IBinSwapRouterBase.sol";
-import {BinSwapRouter} from "pancake-v4-periphery/src/pool-bin/BinSwapRouter.sol";
-import {BinFungiblePositionManager} from "pancake-v4-periphery/src/pool-bin/BinFungiblePositionManager.sol";
-import {IBinFungiblePositionManager} from "pancake-v4-periphery/src/pool-bin/interfaces/IBinFungiblePositionManager.sol";
 import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
+import {DeployPermit2} from "permit2/test/utils/DeployPermit2.sol";
+import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol";
+import {IBinPositionManager} from "pancake-v4-periphery/src/pool-bin/interfaces/IBinPositionManager.sol";
+import {IBinRouterBase} from "pancake-v4-periphery/src/pool-bin/interfaces/IBinRouterBase.sol";
 
 import {BinLimitOrder, Epoch, EpochLibrary} from "../../src/pool-bin/limit-order/BinLimitOrder.sol";
+import {MockBinPositionManager} from "./helpers/MockBinPositionManager.sol";
+import {MockBinSwapRouter} from "./helpers/MockBinSwapRouter.sol";
 import {Deployers} from "./helpers/Deployers.sol";
 
-contract BinLimitOrderHookTest is Test, Deployers {
+contract BinLimitOrderHookTest is Test, Deployers, DeployPermit2 {
     using PoolIdLibrary for PoolKey;
     using BinPoolParametersHelper for bytes32;
 
@@ -31,8 +33,9 @@ contract BinLimitOrderHookTest is Test, Deployers {
 
     IVault vault;
     IBinPoolManager poolManager;
-    BinFungiblePositionManager bfp;
-    BinSwapRouter swapRouter;
+    IAllowanceTransfer permit2;
+    MockBinPositionManager bpm;
+    MockBinSwapRouter swapRouter;
 
     BinLimitOrder limitOrder;
 
@@ -49,14 +52,17 @@ contract BinLimitOrderHookTest is Test, Deployers {
         (vault, poolManager) = createFreshManager();
         limitOrder = new BinLimitOrder(poolManager);
 
-        bfp = new BinFungiblePositionManager(vault, poolManager, address(0));
-        swapRouter = new BinSwapRouter(vault, poolManager, address(0));
+        permit2 = IAllowanceTransfer(deployPermit2());
+        bpm = new MockBinPositionManager(vault, poolManager, permit2);
+        swapRouter = new MockBinSwapRouter(vault, poolManager);
 
-        address[3] memory approvalAddress = [address(bfp), address(swapRouter), address(limitOrder)];
+        address[4] memory approvalAddress = [address(bpm), address(swapRouter), address(limitOrder), address(permit2)];
         for (uint256 i; i < approvalAddress.length; i++) {
             token0.approve(approvalAddress[i], type(uint256).max);
             token1.approve(approvalAddress[i], type(uint256).max);
         }
+        permit2.approve(address(token0), address(bpm), type(uint160).max, type(uint48).max);
+        permit2.approve(address(token1), address(bpm), type(uint160).max, type(uint48).max);
 
         key = PoolKey({
             currency0: currency0,
@@ -89,8 +95,8 @@ contract BinLimitOrderHookTest is Test, Deployers {
         distributionY[2] = Constants.PRECISION / 3;
         distributionY[3] = 0;
         distributionY[4] = 0;
-        bfp.addLiquidity(
-            IBinFungiblePositionManager.AddLiquidityParams({
+        bpm.addLiquidity(
+            IBinPositionManager.BinAddLiquidityParams({
                 poolKey: key,
                 amount0: 3 * 1e18,
                 amount1: 3 * 1e18,
@@ -101,8 +107,7 @@ contract BinLimitOrderHookTest is Test, Deployers {
                 deltaIds: deltaIds,
                 distributionX: distributionX,
                 distributionY: distributionY,
-                to: address(this),
-                deadline: block.timestamp
+                to: address(this)
             })
         );
     }
@@ -199,10 +204,9 @@ contract BinLimitOrderHookTest is Test, Deployers {
         limitOrder.place(key, BIN_ID_1_1 + 1, true, 1e18);
 
         swapRouter.exactInputSingle(
-            IBinSwapRouterBase.V4BinExactInputSingleParams({
+            IBinRouterBase.BinSwapExactInputSingleParams({
                 poolKey: key,
                 swapForY: false,
-                recipient: address(this),
                 amountIn: 4 * 1e18,
                 amountOutMinimum: 0,
                 hookData: ZERO_BYTES

@@ -5,3 +5,4 @@ forge-std/=lib/pancake-v4-periphery/lib/pancake-v4-core/lib/forge-std/src/
 forge-gas-snapshot/=lib/pancake-v4-periphery/lib/pancake-v4-core/lib/forge-gas-snapshot/src/
 openzeppelin-contracts/=lib/pancake-v4-periphery/lib/pancake-v4-core/lib/openzeppelin-contracts/
 solmate/=lib/pancake-v4-periphery/lib/pancake-v4-core/lib/solmate/
+permit/=lib/pancake-v4-periphery/lib/permit/

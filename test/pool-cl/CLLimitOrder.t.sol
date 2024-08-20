@@ -14,15 +14,20 @@ import {CLPoolParametersHelper} from "pancake-v4-core/src/pool-cl/libraries/CLPo
 import {TickMath} from "pancake-v4-core/src/pool-cl/libraries/TickMath.sol";
 import {SortTokens} from "pancake-v4-core/test/helpers/SortTokens.sol";
 import {Deployers} from "pancake-v4-core/test/pool-cl/helpers/Deployers.sol";
-import {ICLSwapRouterBase} from "pancake-v4-periphery/src/pool-cl/interfaces/ICLSwapRouterBase.sol";
-import {CLSwapRouter} from "pancake-v4-periphery/src/pool-cl/CLSwapRouter.sol";
-import {NonfungiblePositionManager} from "pancake-v4-periphery/src/pool-cl/NonfungiblePositionManager.sol";
-import {INonfungiblePositionManager} from "pancake-v4-periphery/src/pool-cl/interfaces/INonfungiblePositionManager.sol";
 import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
+
+import {Hooks} from "pancake-v4-core/src/libraries/Hooks.sol";
+import {ICLRouterBase} from "pancake-v4-periphery/src/pool-cl/interfaces/ICLRouterBase.sol";
+import {DeployPermit2} from "permit2/test/utils/DeployPermit2.sol";
+import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol";
+
+import {MockCLSwapRouter} from "./helpers/MockCLSwapRouter.sol";
+import {MockCLPositionManager} from "./helpers/MockCLPositionManager.sol";
+import {PositionConfig} from "pancake-v4-periphery/src/pool-cl/libraries/PositionConfig.sol";
 
 import {CLLimitOrder, Epoch, EpochLibrary} from "../../src/pool-cl/limit-order/CLLimitOrder.sol";
 
-contract CLLimitOrderHookTest is Test, Deployers {
+contract CLLimitOrderHookTest is Test, Deployers, DeployPermit2 {
     using PoolIdLibrary for PoolKey;
     using CLPoolParametersHelper for bytes32;
 
@@ -30,8 +35,9 @@ contract CLLimitOrderHookTest is Test, Deployers {
 
     IVault vault;
     ICLPoolManager poolManager;
-    NonfungiblePositionManager nfp;
-    CLSwapRouter swapRouter;
+    IAllowanceTransfer permit2;
+    MockCLPositionManager cpm;
+    MockCLSwapRouter swapRouter;
 
     CLLimitOrder limitOrder;
 
@@ -46,19 +52,22 @@ contract CLLimitOrderHookTest is Test, Deployers {
         (vault, poolManager) = createFreshManager();
         limitOrder = new CLLimitOrder(poolManager);
 
-        nfp = new NonfungiblePositionManager(vault, poolManager, address(0), address(0));
-        swapRouter = new CLSwapRouter(vault, poolManager, address(0));
+        permit2 = IAllowanceTransfer(deployPermit2());
+        cpm = new MockCLPositionManager(vault, poolManager, permit2);
+        swapRouter = new MockCLSwapRouter(vault, poolManager);
 
         MockERC20[] memory tokens = deployTokens(2, type(uint256).max);
         token0 = tokens[0];
         token1 = tokens[1];
         (currency0, currency1) = SortTokens.sort(token0, token1);
 
-        address[3] memory approvalAddress = [address(nfp), address(swapRouter), address(limitOrder)];
+        address[4] memory approvalAddress = [address(cpm), address(swapRouter), address(limitOrder), address(permit2)];
         for (uint256 i; i < approvalAddress.length; i++) {
             token0.approve(approvalAddress[i], type(uint256).max);
             token1.approve(approvalAddress[i], type(uint256).max);
         }
+        permit2.approve(address(token0), address(cpm), type(uint160).max, type(uint48).max);
+        permit2.approve(address(token1), address(cpm), type(uint160).max, type(uint48).max);
 
         key = PoolKey({
             currency0: currency0,
@@ -72,19 +81,20 @@ contract CLLimitOrderHookTest is Test, Deployers {
 
         poolManager.initialize(key, SQRT_RATIO_1_1, ZERO_BYTES);
 
-        nfp.mint(
-            INonfungiblePositionManager.MintParams({
-                poolKey: key,
-                tickLower: -120,
-                tickUpper: 120,
-                salt: bytes32(0),
-                amount0Desired: 1e18,
-                amount1Desired: 1e18,
-                amount0Min: 0,
-                amount1Min: 0,
-                recipient: address(this),
-                deadline: block.timestamp
-            })
+        PositionConfig memory config = PositionConfig({poolKey: key, tickLower: -120, tickUpper: 120});
+
+        cpm.mint(
+            config,
+            // liquidity:
+            10e18,
+            // amount0Max:
+            100e18,
+            // amount1Max:
+            100e18,
+            // owner:
+            address(this),
+            // hookData:
+            ZERO_BYTES
         );
     }
 
@@ -141,10 +151,9 @@ contract CLLimitOrderHookTest is Test, Deployers {
     function testZeroForOneInRangeRevert() public {
         // swapping is free, there's no liquidity in the pool, so we only need to specify 1 wei
         swapRouter.exactInputSingle(
-            ICLSwapRouterBase.V4CLExactInputSingleParams({
+            ICLRouterBase.CLSwapExactInputSingleParams({
                 poolKey: key,
                 zeroForOne: false,
-                recipient: address(this),
                 amountIn: 1e18,
                 amountOutMinimum: 0,
                 sqrtPriceLimitX96: SQRT_RATIO_1_1 + 1,
@@ -174,10 +183,9 @@ contract CLLimitOrderHookTest is Test, Deployers {
     function testNotZeroForOneInRangeRevert() public {
         // swapping is free, there's no liquidity in the pool, so we only need to specify 1 wei
         swapRouter.exactInputSingle(
-            ICLSwapRouterBase.V4CLExactInputSingleParams({
+            ICLRouterBase.CLSwapExactInputSingleParams({
                 poolKey: key,
                 zeroForOne: true,
-                recipient: address(this),
                 amountIn: 1e18,
                 amountOutMinimum: 0,
                 sqrtPriceLimitX96: SQRT_RATIO_1_1 - 1,
@@ -243,10 +251,9 @@ contract CLLimitOrderHookTest is Test, Deployers {
         limitOrder.place(key, tickLower, zeroForOne, liquidity);
 
         swapRouter.exactInputSingle(
-            ICLSwapRouterBase.V4CLExactInputSingleParams({
+            ICLRouterBase.CLSwapExactInputSingleParams({
                 poolKey: key,
                 zeroForOne: false,
-                recipient: address(this),
                 amountIn: 1e18,
                 amountOutMinimum: 0,
                 sqrtPriceLimitX96: TickMath.getSqrtRatioAtTick(60),

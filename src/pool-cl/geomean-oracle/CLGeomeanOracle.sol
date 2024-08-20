@@ -98,7 +98,7 @@ contract CLGeomeanOracle is CLBaseHook {
         // In other words, there may only be one pool per pair of tokens that use
         // this hook. The tick spacing is set to the maximum because we only allow
         // full range liquidity in this pool.
-        if (key.fee != 0 || key.parameters.getTickSpacing() != poolManager.MAX_TICK_SPACING()) {
+        if (key.fee != 0 || key.parameters.getTickSpacing() != TickMath.MAX_TICK_SPACING) {
             revert OnlyOneOraclePoolAllowed();
         }
         return this.beforeInitialize.selector;
@@ -133,7 +133,7 @@ contract CLGeomeanOracle is CLBaseHook {
         ICLPoolManager.ModifyLiquidityParams calldata params,
         bytes calldata hookData
     ) external override returns (bytes4) {
-        int24 maxTickSpacing = poolManager.MAX_TICK_SPACING();
+        int24 maxTickSpacing = TickMath.MAX_TICK_SPACING;
         if (
             params.tickLower != TickMath.minUsableTick(maxTickSpacing)
                 || params.tickUpper != TickMath.maxUsableTick(maxTickSpacing)

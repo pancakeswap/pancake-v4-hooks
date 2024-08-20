@@ -331,7 +331,7 @@ contract CLFullRange is CLBaseHook {
 
     function _settleDelta(address sender, Currency currency, uint128 amount) internal {
         if (currency.isNative()) {
-            vault.settle{value: amount}(currency);
+            vault.settle{value: amount}();
         } else {
             vault.sync(currency);
             if (sender == address(this)) {
@@ -339,7 +339,7 @@ contract CLFullRange is CLBaseHook {
             } else {
                 IERC20(Currency.unwrap(currency)).safeTransferFrom(sender, address(vault), amount);
             }
-            vault.settle(currency);
+            vault.settle();
         }
     }
 

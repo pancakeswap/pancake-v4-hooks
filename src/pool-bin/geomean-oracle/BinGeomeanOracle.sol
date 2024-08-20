@@ -92,9 +92,9 @@ contract BinGeomeanOracle is BinBaseHook {
         PoolKey calldata key,
         IBinPoolManager.MintParams calldata params,
         bytes calldata hookData
-    ) external override poolManagerOnly returns (bytes4) {
+    ) external override poolManagerOnly returns (bytes4, uint24) {
         _updatePool(key);
-        return this.beforeMint.selector;
+        return (this.beforeMint.selector, 0);
     }
 
     function beforeBurn(
