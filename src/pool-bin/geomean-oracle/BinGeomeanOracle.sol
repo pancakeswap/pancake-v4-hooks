@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.19;
 
-import {IBinPoolManager} from "@pancakeswap/v4-core/src/pool-bin/interfaces/IBinPoolManager.sol";
+import {IBinPoolManager} from "pancake-v4-core/src/pool-bin/interfaces/IBinPoolManager.sol";
 import {
     HOOKS_BEFORE_INITIALIZE_OFFSET,
     HOOKS_AFTER_INITIALIZE_OFFSET,
@@ -14,13 +14,13 @@ import {
     HOOKS_AFTER_SWAP_OFFSET,
     HOOKS_BEFORE_DONATE_OFFSET,
     HOOKS_AFTER_DONATE_OFFSET
-} from "@pancakeswap/v4-core/src/pool-bin/interfaces/IBinHooks.sol";
-import {IPoolManager} from "@pancakeswap/v4-core/src/interfaces/IPoolManager.sol";
-import {PoolId, PoolIdLibrary} from "@pancakeswap/v4-core/src/types/PoolId.sol";
-import {PoolKey} from "@pancakeswap/v4-core/src/types/PoolKey.sol";
-import {BalanceDelta, BalanceDeltaLibrary} from "@pancakeswap/v4-core/src/types/BalanceDelta.sol";
-import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "@pancakeswap/v4-core/src/types/BeforeSwapDelta.sol";
-import {Hooks} from "@pancakeswap/v4-core/src/libraries/Hooks.sol";
+} from "pancake-v4-core/src/pool-bin/interfaces/IBinHooks.sol";
+import {IPoolManager} from "pancake-v4-core/src/interfaces/IPoolManager.sol";
+import {PoolId, PoolIdLibrary} from "pancake-v4-core/src/types/PoolId.sol";
+import {PoolKey} from "pancake-v4-core/src/types/PoolKey.sol";
+import {BalanceDelta, BalanceDeltaLibrary} from "pancake-v4-core/src/types/BalanceDelta.sol";
+import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "pancake-v4-core/src/types/BeforeSwapDelta.sol";
+import {Hooks} from "pancake-v4-core/src/libraries/Hooks.sol";
 
 import {BinBaseHook} from "../BinBaseHook.sol";
 import {OracleHelper} from "./libraries/OracleHelper.sol";

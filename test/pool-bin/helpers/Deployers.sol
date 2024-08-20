@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
-import {Hooks} from "@pancakeswap/v4-core/src/libraries/Hooks.sol";
-import {Currency} from "@pancakeswap/v4-core/src/types/Currency.sol";
-import {IHooks} from "@pancakeswap/v4-core/src/interfaces/IHooks.sol";
-import {IBinPoolManager} from "@pancakeswap/v4-core/src/pool-bin/interfaces/IBinPoolManager.sol";
-import {BinPoolManager} from "@pancakeswap/v4-core/src/pool-bin/BinPoolManager.sol";
-import {PoolId, PoolIdLibrary} from "@pancakeswap/v4-core/src/types/PoolId.sol";
-import {LPFeeLibrary} from "@pancakeswap/v4-core/src/libraries/LPFeeLibrary.sol";
-import {SortTokens} from "@pancakeswap/v4-core/test/helpers/SortTokens.sol";
-import {PoolKey} from "@pancakeswap/v4-core/src/types/PoolKey.sol";
-import {Vault} from "@pancakeswap/v4-core/src/Vault.sol";
-import {IVault} from "@pancakeswap/v4-core/src/interfaces/IVault.sol";
+import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
+import {Hooks} from "pancake-v4-core/src/libraries/Hooks.sol";
+import {Currency} from "pancake-v4-core/src/types/Currency.sol";
+import {IHooks} from "pancake-v4-core/src/interfaces/IHooks.sol";
+import {IBinPoolManager} from "pancake-v4-core/src/pool-bin/interfaces/IBinPoolManager.sol";
+import {BinPoolManager} from "pancake-v4-core/src/pool-bin/BinPoolManager.sol";
+import {PoolId, PoolIdLibrary} from "pancake-v4-core/src/types/PoolId.sol";
+import {LPFeeLibrary} from "pancake-v4-core/src/libraries/LPFeeLibrary.sol";
+import {SortTokens} from "pancake-v4-core/test/helpers/SortTokens.sol";
+import {PoolKey} from "pancake-v4-core/src/types/PoolKey.sol";
+import {Vault} from "pancake-v4-core/src/Vault.sol";
+import {IVault} from "pancake-v4-core/src/interfaces/IVault.sol";
 
 contract Deployers {
     using LPFeeLibrary for uint24;

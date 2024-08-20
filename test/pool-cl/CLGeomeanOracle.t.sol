@@ -3,24 +3,23 @@ pragma solidity ^0.8.19;
 
 import {Test} from "forge-std/Test.sol";
 
-import {ICLPoolManager} from "@pancakeswap/v4-core/src/pool-cl/interfaces/ICLPoolManager.sol";
-import {IVault} from "@pancakeswap/v4-core/src/interfaces/IVault.sol";
-import {CLPoolManager} from "@pancakeswap/v4-core/src/pool-cl/CLPoolManager.sol";
-import {Vault} from "@pancakeswap/v4-core/src/Vault.sol";
-import {Currency} from "@pancakeswap/v4-core/src/types/Currency.sol";
-import {PoolKey} from "@pancakeswap/v4-core/src/types/PoolKey.sol";
-import {PoolId, PoolIdLibrary} from "@pancakeswap/v4-core/src/types/PoolId.sol";
-import {CLPoolParametersHelper} from "@pancakeswap/v4-core/src/pool-cl/libraries/CLPoolParametersHelper.sol";
-import {TickMath} from "@pancakeswap/v4-core/src/pool-cl/libraries/TickMath.sol";
-import {SortTokens} from "@pancakeswap/v4-core/test/helpers/SortTokens.sol";
-import {Deployers} from "@pancakeswap/v4-core/test/pool-cl/helpers/Deployers.sol";
-import {Constants} from "@pancakeswap/v4-core/test/pool-cl/helpers/Constants.sol";
-import {ICLSwapRouterBase} from "@pancakeswap/v4-periphery/src/pool-cl/interfaces/ICLSwapRouterBase.sol";
-import {CLSwapRouter} from "@pancakeswap/v4-periphery/src/pool-cl/CLSwapRouter.sol";
-import {NonfungiblePositionManager} from "@pancakeswap/v4-periphery/src/pool-cl/NonfungiblePositionManager.sol";
-import {INonfungiblePositionManager} from
-    "@pancakeswap/v4-periphery/src/pool-cl/interfaces/INonfungiblePositionManager.sol";
-import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
+import {ICLPoolManager} from "pancake-v4-core/src/pool-cl/interfaces/ICLPoolManager.sol";
+import {IVault} from "pancake-v4-core/src/interfaces/IVault.sol";
+import {CLPoolManager} from "pancake-v4-core/src/pool-cl/CLPoolManager.sol";
+import {Vault} from "pancake-v4-core/src/Vault.sol";
+import {Currency} from "pancake-v4-core/src/types/Currency.sol";
+import {PoolKey} from "pancake-v4-core/src/types/PoolKey.sol";
+import {PoolId, PoolIdLibrary} from "pancake-v4-core/src/types/PoolId.sol";
+import {CLPoolParametersHelper} from "pancake-v4-core/src/pool-cl/libraries/CLPoolParametersHelper.sol";
+import {TickMath} from "pancake-v4-core/src/pool-cl/libraries/TickMath.sol";
+import {SortTokens} from "pancake-v4-core/test/helpers/SortTokens.sol";
+import {Deployers} from "pancake-v4-core/test/pool-cl/helpers/Deployers.sol";
+import {Constants} from "pancake-v4-core/test/pool-cl/helpers/Constants.sol";
+import {ICLSwapRouterBase} from "pancake-v4-periphery/src/pool-cl/interfaces/ICLSwapRouterBase.sol";
+import {CLSwapRouter} from "pancake-v4-periphery/src/pool-cl/CLSwapRouter.sol";
+import {NonfungiblePositionManager} from "pancake-v4-periphery/src/pool-cl/NonfungiblePositionManager.sol";
+import {INonfungiblePositionManager} from "pancake-v4-periphery/src/pool-cl/interfaces/INonfungiblePositionManager.sol";
+import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
 
 import {CLGeomeanOracle} from "../../src/pool-cl/geomean-oracle/CLGeomeanOracle.sol";
 import {Oracle} from "../../src/pool-cl/geomean-oracle/libraries/Oracle.sol";

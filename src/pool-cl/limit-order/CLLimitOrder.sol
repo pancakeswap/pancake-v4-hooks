@@ -2,21 +2,21 @@
 
 pragma solidity ^0.8.19;
 
-import {ICLPoolManager} from "@pancakeswap/v4-core/src/pool-cl/interfaces/ICLPoolManager.sol";
-import {FullMath} from "@pancakeswap/v4-core/src/pool-cl/libraries/FullMath.sol";
-import {SafeCast} from "@pancakeswap/v4-core/src/libraries/SafeCast.sol";
-import {CLPoolParametersHelper} from "@pancakeswap/v4-core/src/pool-cl/libraries/CLPoolParametersHelper.sol";
-import {IPoolManager} from "@pancakeswap/v4-core/src/interfaces/IPoolManager.sol";
-import {IVault} from "@pancakeswap/v4-core/src/interfaces/IVault.sol";
-import {PoolId, PoolIdLibrary} from "@pancakeswap/v4-core/src/types/PoolId.sol";
-import {PoolKey} from "@pancakeswap/v4-core/src/types/PoolKey.sol";
-import {Currency, CurrencyLibrary} from "@pancakeswap/v4-core/src/types/Currency.sol";
-import {BalanceDelta} from "@pancakeswap/v4-core/src/types/BalanceDelta.sol";
-import {Hooks} from "@pancakeswap/v4-core/src/libraries/Hooks.sol";
-import {CLPoolManager} from "@pancakeswap/v4-core/src/pool-cl/CLPoolManager.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ICLPoolManager} from "pancake-v4-core/src/pool-cl/interfaces/ICLPoolManager.sol";
+import {FullMath} from "pancake-v4-core/src/pool-cl/libraries/FullMath.sol";
+import {SafeCast} from "pancake-v4-core/src/libraries/SafeCast.sol";
+import {CLPoolParametersHelper} from "pancake-v4-core/src/pool-cl/libraries/CLPoolParametersHelper.sol";
+import {IPoolManager} from "pancake-v4-core/src/interfaces/IPoolManager.sol";
+import {IVault} from "pancake-v4-core/src/interfaces/IVault.sol";
+import {PoolId, PoolIdLibrary} from "pancake-v4-core/src/types/PoolId.sol";
+import {PoolKey} from "pancake-v4-core/src/types/PoolKey.sol";
+import {Currency, CurrencyLibrary} from "pancake-v4-core/src/types/Currency.sol";
+import {BalanceDelta} from "pancake-v4-core/src/types/BalanceDelta.sol";
+import {Hooks} from "pancake-v4-core/src/libraries/Hooks.sol";
+import {CLPoolManager} from "pancake-v4-core/src/pool-cl/CLPoolManager.sol";
+import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {IERC1155Receiver} from "openzeppelin-contracts/contracts/token/ERC1155/IERC1155Receiver.sol";
+import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {CLBaseHook} from "../CLBaseHook.sol";
 

@@ -1,3 +1,7 @@
-@pancakeswap/v4-core/=lib/pancake-v4-core/
-@pancakeswap/v4-periphery/=lib/pancake-v4-periphery/
-@openzeppelin/=lib/pancake-v4-periphery/lib/openzeppelin-contracts/
+pancake-v4-periphery/=lib/pancake-v4-periphery/
+pancake-v4-core/=lib/pancake-v4-periphery/lib/pancake-v4-core/
+ds-test/=lib/pancake-v4-periphery/lib/pancake-v4-core/lib/forge-std/lib/ds-test/src/
+forge-std/=lib/pancake-v4-periphery/lib/pancake-v4-core/lib/forge-std/src/
+forge-gas-snapshot/=lib/pancake-v4-periphery/lib/pancake-v4-core/lib/forge-gas-snapshot/src/
+openzeppelin-contracts/=lib/pancake-v4-periphery/lib/pancake-v4-core/lib/openzeppelin-contracts/
+solmate/=lib/pancake-v4-periphery/lib/pancake-v4-core/lib/solmate/

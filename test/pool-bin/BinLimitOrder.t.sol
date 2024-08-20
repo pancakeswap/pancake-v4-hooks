@@ -3,23 +3,22 @@ pragma solidity ^0.8.19;
 
 import {Test} from "forge-std/Test.sol";
 
-import {IBinPoolManager} from "@pancakeswap/v4-core/src/pool-bin/interfaces/IBinPoolManager.sol";
-import {IVault} from "@pancakeswap/v4-core/src/interfaces/IVault.sol";
-import {BinPoolManager} from "@pancakeswap/v4-core/src/pool-bin/BinPoolManager.sol";
-import {Vault} from "@pancakeswap/v4-core/src/Vault.sol";
-import {Currency} from "@pancakeswap/v4-core/src/types/Currency.sol";
-import {PoolKey} from "@pancakeswap/v4-core/src/types/PoolKey.sol";
-import {PoolId, PoolIdLibrary} from "@pancakeswap/v4-core/src/types/PoolId.sol";
-import {BinPoolParametersHelper} from "@pancakeswap/v4-core/src/pool-bin/libraries/BinPoolParametersHelper.sol";
-import {BinPosition} from "@pancakeswap/v4-core/src/pool-bin/libraries/BinPosition.sol";
-import {Constants} from "@pancakeswap/v4-core/src/pool-bin/libraries/Constants.sol";
-import {SortTokens} from "@pancakeswap/v4-core/test/helpers/SortTokens.sol";
-import {IBinSwapRouterBase} from "@pancakeswap/v4-periphery/src/pool-bin/interfaces/IBinSwapRouterBase.sol";
-import {BinSwapRouter} from "@pancakeswap/v4-periphery/src/pool-bin/BinSwapRouter.sol";
-import {BinFungiblePositionManager} from "@pancakeswap/v4-periphery/src/pool-bin/BinFungiblePositionManager.sol";
-import {IBinFungiblePositionManager} from
-    "@pancakeswap/v4-periphery/src/pool-bin/interfaces/IBinFungiblePositionManager.sol";
-import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
+import {IBinPoolManager} from "pancake-v4-core/src/pool-bin/interfaces/IBinPoolManager.sol";
+import {IVault} from "pancake-v4-core/src/interfaces/IVault.sol";
+import {BinPoolManager} from "pancake-v4-core/src/pool-bin/BinPoolManager.sol";
+import {Vault} from "pancake-v4-core/src/Vault.sol";
+import {Currency} from "pancake-v4-core/src/types/Currency.sol";
+import {PoolKey} from "pancake-v4-core/src/types/PoolKey.sol";
+import {PoolId, PoolIdLibrary} from "pancake-v4-core/src/types/PoolId.sol";
+import {BinPoolParametersHelper} from "pancake-v4-core/src/pool-bin/libraries/BinPoolParametersHelper.sol";
+import {BinPosition} from "pancake-v4-core/src/pool-bin/libraries/BinPosition.sol";
+import {Constants} from "pancake-v4-core/src/pool-bin/libraries/Constants.sol";
+import {SortTokens} from "pancake-v4-core/test/helpers/SortTokens.sol";
+import {IBinSwapRouterBase} from "pancake-v4-periphery/src/pool-bin/interfaces/IBinSwapRouterBase.sol";
+import {BinSwapRouter} from "pancake-v4-periphery/src/pool-bin/BinSwapRouter.sol";
+import {BinFungiblePositionManager} from "pancake-v4-periphery/src/pool-bin/BinFungiblePositionManager.sol";
+import {IBinFungiblePositionManager} from "pancake-v4-periphery/src/pool-bin/interfaces/IBinFungiblePositionManager.sol";
+import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
 
 import {BinLimitOrder, Epoch, EpochLibrary} from "../../src/pool-bin/limit-order/BinLimitOrder.sol";
 import {Deployers} from "./helpers/Deployers.sol";

@@ -2,14 +2,14 @@
 
 pragma solidity ^0.8.19;
 
-import {ICLPoolManager} from "@pancakeswap/v4-core/src/pool-cl/interfaces/ICLPoolManager.sol";
-import {TickMath} from "@pancakeswap/v4-core/src/pool-cl/libraries/TickMath.sol";
-import {CLPoolParametersHelper} from "@pancakeswap/v4-core/src/pool-cl/libraries/CLPoolParametersHelper.sol";
-import {IPoolManager} from "@pancakeswap/v4-core/src/interfaces/IPoolManager.sol";
-import {PoolId, PoolIdLibrary} from "@pancakeswap/v4-core/src/types/PoolId.sol";
-import {PoolKey} from "@pancakeswap/v4-core/src/types/PoolKey.sol";
-import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "@pancakeswap/v4-core/src/types/BeforeSwapDelta.sol";
-import {Hooks} from "@pancakeswap/v4-core/src/libraries/Hooks.sol";
+import {ICLPoolManager} from "pancake-v4-core/src/pool-cl/interfaces/ICLPoolManager.sol";
+import {TickMath} from "pancake-v4-core/src/pool-cl/libraries/TickMath.sol";
+import {CLPoolParametersHelper} from "pancake-v4-core/src/pool-cl/libraries/CLPoolParametersHelper.sol";
+import {IPoolManager} from "pancake-v4-core/src/interfaces/IPoolManager.sol";
+import {PoolId, PoolIdLibrary} from "pancake-v4-core/src/types/PoolId.sol";
+import {PoolKey} from "pancake-v4-core/src/types/PoolKey.sol";
+import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "pancake-v4-core/src/types/BeforeSwapDelta.sol";
+import {Hooks} from "pancake-v4-core/src/libraries/Hooks.sol";
 
 import {CLBaseHook} from "../CLBaseHook.sol";
 import {Oracle} from "./libraries/Oracle.sol";
