@@ -41,14 +41,6 @@ contract MockCLPositionManager is CLPositionManager, CommonBase {
         this.modifyLiquidities(data, block.timestamp);
 
         liquidityMinted = getPositionLiquidity(tokenId, config);
-
-        // Vm.Log[] memory entries = vm.getRecordedLogs();
-        // // find IBinFungibleToken.TransferBatch
-        // for (uint256 i = 0; i < entries.length; i++) {
-        //     if (entries[i].topics[0] == keccak256("TransferBatch(address,address,address,uint256[],uint256[])")) {
-        //         (tokenIds, liquidityMinted) = abi.decode(entries[i].data, (uint256[], uint256[]));
-        //     }
-        // }
     }
 
     function decreaseLiquidity(
