@@ -3,28 +3,32 @@ pragma solidity ^0.8.19;
 
 import {Test} from "forge-std/Test.sol";
 
-import {ICLPoolManager} from "@pancakeswap/v4-core/src/pool-cl/interfaces/ICLPoolManager.sol";
-import {IVault} from "@pancakeswap/v4-core/src/interfaces/IVault.sol";
-import {CLPoolManager} from "@pancakeswap/v4-core/src/pool-cl/CLPoolManager.sol";
-import {Vault} from "@pancakeswap/v4-core/src/Vault.sol";
-import {Currency, CurrencyLibrary} from "@pancakeswap/v4-core/src/types/Currency.sol";
-import {PoolKey} from "@pancakeswap/v4-core/src/types/PoolKey.sol";
-import {PoolId, PoolIdLibrary} from "@pancakeswap/v4-core/src/types/PoolId.sol";
-import {CLPoolParametersHelper} from "@pancakeswap/v4-core/src/pool-cl/libraries/CLPoolParametersHelper.sol";
-import {TickMath} from "@pancakeswap/v4-core/src/pool-cl/libraries/TickMath.sol";
-import {SortTokens} from "@pancakeswap/v4-core/test/helpers/SortTokens.sol";
-import {Deployers} from "@pancakeswap/v4-core/test/pool-cl/helpers/Deployers.sol";
-import {ICLSwapRouterBase} from "@pancakeswap/v4-periphery/src/pool-cl/interfaces/ICLSwapRouterBase.sol";
-import {CLSwapRouter} from "@pancakeswap/v4-periphery/src/pool-cl/CLSwapRouter.sol";
-import {NonfungiblePositionManager} from "@pancakeswap/v4-periphery/src/pool-cl/NonfungiblePositionManager.sol";
-import {INonfungiblePositionManager} from
-    "@pancakeswap/v4-periphery/src/pool-cl/interfaces/INonfungiblePositionManager.sol";
-import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
+import {ICLPoolManager} from "pancake-v4-core/src/pool-cl/interfaces/ICLPoolManager.sol";
+import {IVault} from "pancake-v4-core/src/interfaces/IVault.sol";
+import {CLPoolManager} from "pancake-v4-core/src/pool-cl/CLPoolManager.sol";
+import {Vault} from "pancake-v4-core/src/Vault.sol";
+import {Currency, CurrencyLibrary} from "pancake-v4-core/src/types/Currency.sol";
+import {PoolKey} from "pancake-v4-core/src/types/PoolKey.sol";
+import {PoolId, PoolIdLibrary} from "pancake-v4-core/src/types/PoolId.sol";
+import {CLPoolParametersHelper} from "pancake-v4-core/src/pool-cl/libraries/CLPoolParametersHelper.sol";
+import {TickMath} from "pancake-v4-core/src/pool-cl/libraries/TickMath.sol";
+import {SortTokens} from "pancake-v4-core/test/helpers/SortTokens.sol";
+import {Deployers} from "pancake-v4-core/test/pool-cl/helpers/Deployers.sol";
+import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
+
+import {Hooks} from "pancake-v4-core/src/libraries/Hooks.sol";
+import {ICLRouterBase} from "pancake-v4-periphery/src/pool-cl/interfaces/ICLRouterBase.sol";
+import {DeployPermit2} from "permit2/test/utils/DeployPermit2.sol";
+import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol";
+
+import {MockCLSwapRouter} from "./helpers/MockCLSwapRouter.sol";
+import {MockCLPositionManager} from "./helpers/MockCLPositionManager.sol";
+import {PositionConfig} from "pancake-v4-periphery/src/pool-cl/libraries/PositionConfig.sol";
 
 import {CLFullRange} from "../../src/pool-cl/full-range/CLFullRange.sol";
 import {PancakeV4ERC20} from "../../src/pool-cl/full-range/libraries/PancakeV4ERC20.sol";
 
-contract CLFullRangeHookTest is Test, Deployers {
+contract CLFullRangeHookTest is Test, Deployers, DeployPermit2 {
     using PoolIdLibrary for PoolKey;
     using CLPoolParametersHelper for bytes32;
     using CurrencyLibrary for Currency;
@@ -39,8 +43,9 @@ contract CLFullRangeHookTest is Test, Deployers {
 
     IVault vault;
     ICLPoolManager poolManager;
-    NonfungiblePositionManager nfp;
-    CLSwapRouter swapRouter;
+    IAllowanceTransfer permit2;
+    MockCLPositionManager cpm;
+    MockCLSwapRouter swapRouter;
 
     CLFullRange fullRange;
 
@@ -61,8 +66,9 @@ contract CLFullRangeHookTest is Test, Deployers {
         (vault, poolManager) = createFreshManager();
         fullRange = new CLFullRange(poolManager);
 
-        nfp = new NonfungiblePositionManager(vault, poolManager, address(0), address(0));
-        swapRouter = new CLSwapRouter(vault, poolManager, address(0));
+        permit2 = IAllowanceTransfer(deployPermit2());
+        cpm = new MockCLPositionManager(vault, poolManager, permit2);
+        swapRouter = new MockCLSwapRouter(vault, poolManager);
 
         MockERC20[] memory tokens = deployTokens(3, 2 ** 128);
         token0 = tokens[0];
@@ -114,6 +120,13 @@ contract CLFullRangeHookTest is Test, Deployers {
         token0.approve(address(swapRouter), type(uint256).max);
         token1.approve(address(swapRouter), type(uint256).max);
         token2.approve(address(swapRouter), type(uint256).max);
+        token0.approve(address(permit2), type(uint256).max);
+        token1.approve(address(permit2), type(uint256).max);
+        token2.approve(address(permit2), type(uint256).max);
+
+        permit2.approve(address(token0), address(cpm), type(uint160).max, type(uint48).max);
+        permit2.approve(address(token1), address(cpm), type(uint160).max, type(uint48).max);
+        permit2.approve(address(token2), address(cpm), type(uint160).max, type(uint48).max);
 
         poolManager.initialize(keyWithLiq, SQRT_RATIO_1_1, ZERO_BYTES);
 
@@ -143,7 +156,13 @@ contract CLFullRangeHookTest is Test, Deployers {
             parameters: bytes32(uint256(fullRange.getHooksRegistrationBitmap())).setTickSpacing(61)
         });
 
-        vm.expectRevert(CLFullRange.TickSpacingNotDefault.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Hooks.Wrap__FailedHookCall.selector,
+                address(fullRange),
+                abi.encodeWithSelector(CLFullRange.TickSpacingNotDefault.selector)
+            )
+        );
         poolManager.initialize(wrongKey, SQRT_RATIO_1_1, ZERO_BYTES);
     }
 
@@ -196,10 +215,9 @@ contract CLFullRangeHookTest is Test, Deployers {
         );
 
         swapRouter.exactInputSingle(
-            ICLSwapRouterBase.V4CLExactInputSingleParams({
+            ICLRouterBase.CLSwapExactInputSingleParams({
                 poolKey: key,
                 zeroForOne: true,
-                recipient: address(this),
                 amountIn: 1e18,
                 amountOutMinimum: 0,
                 sqrtPriceLimitX96: 0,
@@ -258,10 +276,9 @@ contract CLFullRangeHookTest is Test, Deployers {
         assertEq(hasAccruedFees, false);
 
         swapRouter.exactInputSingle(
-            ICLSwapRouterBase.V4CLExactInputSingleParams({
+            ICLRouterBase.CLSwapExactInputSingleParams({
                 poolKey: key,
                 zeroForOne: true,
-                recipient: address(this),
                 amountIn: 1e18,
                 amountOutMinimum: 0,
                 sqrtPriceLimitX96: 0,
@@ -289,10 +306,9 @@ contract CLFullRangeHookTest is Test, Deployers {
         );
 
         swapRouter.exactInputSingle(
-            ICLSwapRouterBase.V4CLExactInputSingleParams({
+            ICLRouterBase.CLSwapExactInputSingleParams({
                 poolKey: key,
                 zeroForOne: true,
-                recipient: address(this),
                 amountIn: 1e18,
                 amountOutMinimum: 0,
                 sqrtPriceLimitX96: 0,

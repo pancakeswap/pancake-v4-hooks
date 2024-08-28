@@ -3,27 +3,29 @@ pragma solidity ^0.8.19;
 
 import {Test} from "forge-std/Test.sol";
 
-import {IBinPoolManager} from "@pancakeswap/v4-core/src/pool-bin/interfaces/IBinPoolManager.sol";
-import {IVault} from "@pancakeswap/v4-core/src/interfaces/IVault.sol";
-import {BinPoolManager} from "@pancakeswap/v4-core/src/pool-bin/BinPoolManager.sol";
-import {Vault} from "@pancakeswap/v4-core/src/Vault.sol";
-import {Currency} from "@pancakeswap/v4-core/src/types/Currency.sol";
-import {PoolKey} from "@pancakeswap/v4-core/src/types/PoolKey.sol";
-import {PoolId, PoolIdLibrary} from "@pancakeswap/v4-core/src/types/PoolId.sol";
-import {BinPoolParametersHelper} from "@pancakeswap/v4-core/src/pool-bin/libraries/BinPoolParametersHelper.sol";
-import {Constants} from "@pancakeswap/v4-core/src/pool-bin/libraries/Constants.sol";
-import {SortTokens} from "@pancakeswap/v4-core/test/helpers/SortTokens.sol";
-import {IBinSwapRouterBase} from "@pancakeswap/v4-periphery/src/pool-bin/interfaces/IBinSwapRouterBase.sol";
-import {BinSwapRouter} from "@pancakeswap/v4-periphery/src/pool-bin/BinSwapRouter.sol";
-import {BinFungiblePositionManager} from "@pancakeswap/v4-periphery/src/pool-bin/BinFungiblePositionManager.sol";
-import {IBinFungiblePositionManager} from
-    "@pancakeswap/v4-periphery/src/pool-bin/interfaces/IBinFungiblePositionManager.sol";
-import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
+import {IBinPoolManager} from "pancake-v4-core/src/pool-bin/interfaces/IBinPoolManager.sol";
+import {IVault} from "pancake-v4-core/src/interfaces/IVault.sol";
+import {BinPoolManager} from "pancake-v4-core/src/pool-bin/BinPoolManager.sol";
+import {Vault} from "pancake-v4-core/src/Vault.sol";
+import {Currency} from "pancake-v4-core/src/types/Currency.sol";
+import {PoolKey} from "pancake-v4-core/src/types/PoolKey.sol";
+import {PoolId, PoolIdLibrary} from "pancake-v4-core/src/types/PoolId.sol";
+import {BinPoolParametersHelper} from "pancake-v4-core/src/pool-bin/libraries/BinPoolParametersHelper.sol";
+import {Constants} from "pancake-v4-core/src/pool-bin/libraries/Constants.sol";
+import {SortTokens} from "pancake-v4-core/test/helpers/SortTokens.sol";
+import {Hooks} from "pancake-v4-core/src/libraries/Hooks.sol";
+import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
+import {IBinRouterBase} from "pancake-v4-periphery/src/pool-bin/interfaces/IBinRouterBase.sol";
+import {IBinPositionManager} from "pancake-v4-periphery/src/pool-bin/interfaces/IBinPositionManager.sol";
+import {DeployPermit2} from "permit2/test/utils/DeployPermit2.sol";
+import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol";
 
+import {MockBinPositionManager} from "./helpers/MockBinPositionManager.sol";
+import {MockBinSwapRouter} from "./helpers/MockBinSwapRouter.sol";
 import {BinGeomeanOracle} from "../../src/pool-bin/geomean-oracle/BinGeomeanOracle.sol";
 import {Deployers} from "./helpers/Deployers.sol";
 
-contract BinGeomeanOracleHookTest is Test, Deployers {
+contract BinGeomeanOracleHookTest is Test, Deployers, DeployPermit2 {
     using PoolIdLibrary for PoolKey;
     using BinPoolParametersHelper for bytes32;
 
@@ -31,8 +33,9 @@ contract BinGeomeanOracleHookTest is Test, Deployers {
 
     IVault vault;
     IBinPoolManager poolManager;
-    BinFungiblePositionManager bfp;
-    BinSwapRouter swapRouter;
+    IAllowanceTransfer permit2;
+    MockBinPositionManager bpm;
+    MockBinSwapRouter swapRouter;
 
     BinGeomeanOracle geomeanOracle;
 
@@ -49,14 +52,17 @@ contract BinGeomeanOracleHookTest is Test, Deployers {
         (vault, poolManager) = createFreshManager();
         geomeanOracle = new BinGeomeanOracle(poolManager);
 
-        bfp = new BinFungiblePositionManager(vault, poolManager, address(0));
-        swapRouter = new BinSwapRouter(vault, poolManager, address(0));
+        permit2 = IAllowanceTransfer(deployPermit2());
+        bpm = new MockBinPositionManager(vault, poolManager, permit2);
+        swapRouter = new MockBinSwapRouter(vault, poolManager);
 
-        address[2] memory approvalAddress = [address(bfp), address(swapRouter)];
+        address[3] memory approvalAddress = [address(bpm), address(swapRouter), address(permit2)];
         for (uint256 i; i < approvalAddress.length; i++) {
             token0.approve(approvalAddress[i], type(uint256).max);
             token1.approve(approvalAddress[i], type(uint256).max);
         }
+        permit2.approve(address(token0), address(bpm), type(uint160).max, type(uint48).max);
+        permit2.approve(address(token1), address(bpm), type(uint160).max, type(uint48).max);
 
         key = PoolKey({
             currency0: currency0,
@@ -78,7 +84,13 @@ contract BinGeomeanOracleHookTest is Test, Deployers {
             fee: 1,
             parameters: bytes32(uint256(geomeanOracle.getHooksRegistrationBitmap())).setBinStep(60)
         });
-        vm.expectRevert(BinGeomeanOracle.OnlyOneOraclePoolAllowed.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Hooks.Wrap__FailedHookCall.selector,
+                address(geomeanOracle),
+                abi.encodeWithSelector(BinGeomeanOracle.OnlyOneOraclePoolAllowed.selector)
+            )
+        );
         poolManager.initialize(k, BIN_ID_1_1, ZERO_BYTES);
     }
 
@@ -112,8 +124,8 @@ contract BinGeomeanOracleHookTest is Test, Deployers {
             distributionX[0] = Constants.PRECISION;
             uint256[] memory distributionY = new uint256[](numBins);
             distributionY[0] = Constants.PRECISION;
-            (,, uint256[] memory tokenIds, uint256[] memory liquidityMinted) = bfp.addLiquidity(
-                IBinFungiblePositionManager.AddLiquidityParams({
+            (,, uint256[] memory tokenIds, uint256[] memory liquidityMinted) = bpm.addLiquidity(
+                IBinPositionManager.BinAddLiquidityParams({
                     poolKey: key,
                     amount0: 1e18,
                     amount1: 1e18,
@@ -124,8 +136,7 @@ contract BinGeomeanOracleHookTest is Test, Deployers {
                     deltaIds: deltaIds,
                     distributionX: distributionX,
                     distributionY: distributionY,
-                    to: address(this),
-                    deadline: block.timestamp
+                    to: address(this)
                 })
             );
 
@@ -153,8 +164,8 @@ contract BinGeomeanOracleHookTest is Test, Deployers {
             distributionX[0] = Constants.PRECISION;
             uint256[] memory distributionY = new uint256[](numBins);
             distributionY[0] = Constants.PRECISION;
-            (,, uint256[] memory tokenIds, uint256[] memory liquidityMinted) = bfp.addLiquidity(
-                IBinFungiblePositionManager.AddLiquidityParams({
+            (,, uint256[] memory tokenIds, uint256[] memory liquidityMinted) = bpm.addLiquidity(
+                IBinPositionManager.BinAddLiquidityParams({
                     poolKey: key,
                     amount0: 1e18,
                     amount1: 1e18,
@@ -165,8 +176,7 @@ contract BinGeomeanOracleHookTest is Test, Deployers {
                     deltaIds: deltaIds,
                     distributionX: distributionX,
                     distributionY: distributionY,
-                    to: address(this),
-                    deadline: block.timestamp
+                    to: address(this)
                 })
             );
 
@@ -195,8 +205,8 @@ contract BinGeomeanOracleHookTest is Test, Deployers {
         distributionX[0] = Constants.PRECISION;
         uint256[] memory distributionY = new uint256[](numBins);
         distributionY[0] = Constants.PRECISION;
-        (,, uint256[] memory tokenIds, uint256[] memory liquidityMinted) = bfp.addLiquidity(
-            IBinFungiblePositionManager.AddLiquidityParams({
+        (,, uint256[] memory tokenIds, uint256[] memory liquidityMinted) = bpm.addLiquidity(
+            IBinPositionManager.BinAddLiquidityParams({
                 poolKey: key,
                 amount0: 1e18,
                 amount1: 1e18,
@@ -207,22 +217,26 @@ contract BinGeomeanOracleHookTest is Test, Deployers {
                 deltaIds: deltaIds,
                 distributionX: distributionX,
                 distributionY: distributionY,
-                to: address(this),
-                deadline: block.timestamp
+                to: address(this)
             })
         );
 
-        vm.expectRevert(BinGeomeanOracle.OraclePoolMustLockLiquidity.selector);
-        bfp.removeLiquidity(
-            IBinFungiblePositionManager.RemoveLiquidityParams({
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Hooks.Wrap__FailedHookCall.selector,
+                address(geomeanOracle),
+                abi.encodeWithSelector(BinGeomeanOracle.OraclePoolMustLockLiquidity.selector)
+            )
+        );
+
+        bpm.removeLiquidity(
+            IBinPositionManager.BinRemoveLiquidityParams({
                 poolKey: key,
                 amount0Min: 0,
                 amount1Min: 0,
                 ids: tokenIds,
                 amounts: liquidityMinted,
-                from: address(this),
-                to: address(this),
-                deadline: block.timestamp
+                from: address(this)
             })
         );
     }

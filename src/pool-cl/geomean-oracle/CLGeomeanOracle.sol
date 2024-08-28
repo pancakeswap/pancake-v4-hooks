@@ -2,14 +2,14 @@
 
 pragma solidity ^0.8.19;
 
-import {ICLPoolManager} from "@pancakeswap/v4-core/src/pool-cl/interfaces/ICLPoolManager.sol";
-import {TickMath} from "@pancakeswap/v4-core/src/pool-cl/libraries/TickMath.sol";
-import {CLPoolParametersHelper} from "@pancakeswap/v4-core/src/pool-cl/libraries/CLPoolParametersHelper.sol";
-import {IPoolManager} from "@pancakeswap/v4-core/src/interfaces/IPoolManager.sol";
-import {PoolId, PoolIdLibrary} from "@pancakeswap/v4-core/src/types/PoolId.sol";
-import {PoolKey} from "@pancakeswap/v4-core/src/types/PoolKey.sol";
-import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "@pancakeswap/v4-core/src/types/BeforeSwapDelta.sol";
-import {Hooks} from "@pancakeswap/v4-core/src/libraries/Hooks.sol";
+import {ICLPoolManager} from "pancake-v4-core/src/pool-cl/interfaces/ICLPoolManager.sol";
+import {TickMath} from "pancake-v4-core/src/pool-cl/libraries/TickMath.sol";
+import {CLPoolParametersHelper} from "pancake-v4-core/src/pool-cl/libraries/CLPoolParametersHelper.sol";
+import {IPoolManager} from "pancake-v4-core/src/interfaces/IPoolManager.sol";
+import {PoolId, PoolIdLibrary} from "pancake-v4-core/src/types/PoolId.sol";
+import {PoolKey} from "pancake-v4-core/src/types/PoolKey.sol";
+import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "pancake-v4-core/src/types/BeforeSwapDelta.sol";
+import {Hooks} from "pancake-v4-core/src/libraries/Hooks.sol";
 
 import {CLBaseHook} from "../CLBaseHook.sol";
 import {Oracle} from "./libraries/Oracle.sol";
@@ -98,7 +98,7 @@ contract CLGeomeanOracle is CLBaseHook {
         // In other words, there may only be one pool per pair of tokens that use
         // this hook. The tick spacing is set to the maximum because we only allow
         // full range liquidity in this pool.
-        if (key.fee != 0 || key.parameters.getTickSpacing() != poolManager.MAX_TICK_SPACING()) {
+        if (key.fee != 0 || key.parameters.getTickSpacing() != TickMath.MAX_TICK_SPACING) {
             revert OnlyOneOraclePoolAllowed();
         }
         return this.beforeInitialize.selector;
@@ -133,7 +133,7 @@ contract CLGeomeanOracle is CLBaseHook {
         ICLPoolManager.ModifyLiquidityParams calldata params,
         bytes calldata hookData
     ) external override returns (bytes4) {
-        int24 maxTickSpacing = poolManager.MAX_TICK_SPACING();
+        int24 maxTickSpacing = TickMath.MAX_TICK_SPACING;
         if (
             params.tickLower != TickMath.minUsableTick(maxTickSpacing)
                 || params.tickUpper != TickMath.maxUsableTick(maxTickSpacing)

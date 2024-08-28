@@ -3,29 +3,33 @@ pragma solidity ^0.8.19;
 
 import {Test} from "forge-std/Test.sol";
 
-import {ICLPoolManager} from "@pancakeswap/v4-core/src/pool-cl/interfaces/ICLPoolManager.sol";
-import {IVault} from "@pancakeswap/v4-core/src/interfaces/IVault.sol";
-import {CLPoolManager} from "@pancakeswap/v4-core/src/pool-cl/CLPoolManager.sol";
-import {Vault} from "@pancakeswap/v4-core/src/Vault.sol";
-import {Currency} from "@pancakeswap/v4-core/src/types/Currency.sol";
-import {PoolKey} from "@pancakeswap/v4-core/src/types/PoolKey.sol";
-import {PoolId, PoolIdLibrary} from "@pancakeswap/v4-core/src/types/PoolId.sol";
-import {CLPoolParametersHelper} from "@pancakeswap/v4-core/src/pool-cl/libraries/CLPoolParametersHelper.sol";
-import {TickMath} from "@pancakeswap/v4-core/src/pool-cl/libraries/TickMath.sol";
-import {SortTokens} from "@pancakeswap/v4-core/test/helpers/SortTokens.sol";
-import {Deployers} from "@pancakeswap/v4-core/test/pool-cl/helpers/Deployers.sol";
-import {Constants} from "@pancakeswap/v4-core/test/pool-cl/helpers/Constants.sol";
-import {ICLSwapRouterBase} from "@pancakeswap/v4-periphery/src/pool-cl/interfaces/ICLSwapRouterBase.sol";
-import {CLSwapRouter} from "@pancakeswap/v4-periphery/src/pool-cl/CLSwapRouter.sol";
-import {NonfungiblePositionManager} from "@pancakeswap/v4-periphery/src/pool-cl/NonfungiblePositionManager.sol";
-import {INonfungiblePositionManager} from
-    "@pancakeswap/v4-periphery/src/pool-cl/interfaces/INonfungiblePositionManager.sol";
-import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
+import {ICLPoolManager} from "pancake-v4-core/src/pool-cl/interfaces/ICLPoolManager.sol";
+import {IVault} from "pancake-v4-core/src/interfaces/IVault.sol";
+import {CLPoolManager} from "pancake-v4-core/src/pool-cl/CLPoolManager.sol";
+import {Vault} from "pancake-v4-core/src/Vault.sol";
+import {Currency} from "pancake-v4-core/src/types/Currency.sol";
+import {PoolKey} from "pancake-v4-core/src/types/PoolKey.sol";
+import {PoolId, PoolIdLibrary} from "pancake-v4-core/src/types/PoolId.sol";
+import {CLPoolParametersHelper} from "pancake-v4-core/src/pool-cl/libraries/CLPoolParametersHelper.sol";
+import {TickMath} from "pancake-v4-core/src/pool-cl/libraries/TickMath.sol";
+import {SortTokens} from "pancake-v4-core/test/helpers/SortTokens.sol";
+import {Deployers} from "pancake-v4-core/test/pool-cl/helpers/Deployers.sol";
+import {Constants} from "pancake-v4-core/test/pool-cl/helpers/Constants.sol";
+import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
+
+import {Hooks} from "pancake-v4-core/src/libraries/Hooks.sol";
+import {ICLRouterBase} from "pancake-v4-periphery/src/pool-cl/interfaces/ICLRouterBase.sol";
+import {DeployPermit2} from "permit2/test/utils/DeployPermit2.sol";
+import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol";
+
+import {MockCLSwapRouter} from "./helpers/MockCLSwapRouter.sol";
+import {MockCLPositionManager} from "./helpers/MockCLPositionManager.sol";
+import {PositionConfig} from "pancake-v4-periphery/src/pool-cl/libraries/PositionConfig.sol";
 
 import {CLGeomeanOracle} from "../../src/pool-cl/geomean-oracle/CLGeomeanOracle.sol";
 import {Oracle} from "../../src/pool-cl/geomean-oracle/libraries/Oracle.sol";
 
-contract CLGeomeanOracleHookTest is Test, Deployers {
+contract CLGeomeanOracleHookTest is Test, Deployers, DeployPermit2 {
     using PoolIdLibrary for PoolKey;
     using CLPoolParametersHelper for bytes32;
 
@@ -33,8 +37,9 @@ contract CLGeomeanOracleHookTest is Test, Deployers {
 
     IVault vault;
     ICLPoolManager poolManager;
-    NonfungiblePositionManager nfp;
-    CLSwapRouter swapRouter;
+    IAllowanceTransfer permit2;
+    MockCLPositionManager cpm;
+    MockCLSwapRouter swapRouter;
 
     CLGeomeanOracle geomeanOracle;
 
@@ -47,19 +52,22 @@ contract CLGeomeanOracleHookTest is Test, Deployers {
         (vault, poolManager) = createFreshManager();
         geomeanOracle = new CLGeomeanOracle(poolManager);
 
-        nfp = new NonfungiblePositionManager(vault, poolManager, address(0), address(0));
-        swapRouter = new CLSwapRouter(vault, poolManager, address(0));
+        permit2 = IAllowanceTransfer(deployPermit2());
+        cpm = new MockCLPositionManager(vault, poolManager, permit2);
+        swapRouter = new MockCLSwapRouter(vault, poolManager);
 
         MockERC20[] memory tokens = deployTokens(2, type(uint256).max);
         token0 = tokens[0];
         token1 = tokens[1];
         (Currency currency0, Currency currency1) = SortTokens.sort(token0, token1);
 
-        address[2] memory approvalAddress = [address(nfp), address(swapRouter)];
+        address[3] memory approvalAddress = [address(cpm), address(swapRouter), address(permit2)];
         for (uint256 i; i < approvalAddress.length; i++) {
             token0.approve(approvalAddress[i], type(uint256).max);
             token1.approve(approvalAddress[i], type(uint256).max);
         }
+        permit2.approve(address(token0), address(cpm), type(uint160).max, type(uint48).max);
+        permit2.approve(address(token1), address(cpm), type(uint160).max, type(uint48).max);
 
         key = PoolKey({
             currency0: currency0,
@@ -87,7 +95,13 @@ contract CLGeomeanOracleHookTest is Test, Deployers {
             fee: 1,
             parameters: bytes32(uint256(geomeanOracle.getHooksRegistrationBitmap())).setTickSpacing(MAX_TICK_SPACING)
         });
-        vm.expectRevert(CLGeomeanOracle.OnlyOneOraclePoolAllowed.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Hooks.Wrap__FailedHookCall.selector,
+                address(geomeanOracle),
+                abi.encodeWithSelector(CLGeomeanOracle.OnlyOneOraclePoolAllowed.selector)
+            )
+        );
         poolManager.initialize(k, SQRT_RATIO_1_1, ZERO_BYTES);
     }
 
@@ -100,7 +114,14 @@ contract CLGeomeanOracleHookTest is Test, Deployers {
             fee: 0,
             parameters: bytes32(uint256(geomeanOracle.getHooksRegistrationBitmap())).setTickSpacing(60)
         });
-        vm.expectRevert(CLGeomeanOracle.OnlyOneOraclePoolAllowed.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Hooks.Wrap__FailedHookCall.selector,
+                address(geomeanOracle),
+                abi.encodeWithSelector(CLGeomeanOracle.OnlyOneOraclePoolAllowed.selector)
+            )
+        );
+
         poolManager.initialize(k, SQRT_RATIO_1_1, ZERO_BYTES);
     }
 
@@ -136,19 +157,24 @@ contract CLGeomeanOracleHookTest is Test, Deployers {
     function testBeforeModifyPositionNoObservations() public {
         poolManager.initialize(key, Constants.SQRT_RATIO_2_1, ZERO_BYTES);
 
-        nfp.mint(
-            INonfungiblePositionManager.MintParams({
-                poolKey: key,
-                tickLower: TickMath.minUsableTick(MAX_TICK_SPACING),
-                tickUpper: TickMath.maxUsableTick(MAX_TICK_SPACING),
-                salt: bytes32(0),
-                amount0Desired: 1e18,
-                amount1Desired: 1e18,
-                amount0Min: 0,
-                amount1Min: 0,
-                recipient: address(this),
-                deadline: block.timestamp
-            })
+        PositionConfig memory config = PositionConfig({
+            poolKey: key,
+            tickLower: TickMath.minUsableTick(MAX_TICK_SPACING),
+            tickUpper: TickMath.maxUsableTick(MAX_TICK_SPACING)
+        });
+
+        cpm.mint(
+            config,
+            // liquidity:
+            10e18,
+            // amount0Max:
+            100e18,
+            // amount1Max:
+            100e18,
+            // owner:
+            address(this),
+            // hookData:
+            ZERO_BYTES
         );
 
         CLGeomeanOracle.ObservationState memory observationState = geomeanOracle.getState(key);
@@ -166,19 +192,25 @@ contract CLGeomeanOracleHookTest is Test, Deployers {
     function testBeforeModifyPositionObservation() public {
         poolManager.initialize(key, Constants.SQRT_RATIO_2_1, ZERO_BYTES);
         vm.warp(3); // advance 2 seconds
-        nfp.mint(
-            INonfungiblePositionManager.MintParams({
-                poolKey: key,
-                tickLower: TickMath.minUsableTick(MAX_TICK_SPACING),
-                tickUpper: TickMath.maxUsableTick(MAX_TICK_SPACING),
-                salt: bytes32(0),
-                amount0Desired: 1e18,
-                amount1Desired: 1e18,
-                amount0Min: 0,
-                amount1Min: 0,
-                recipient: address(this),
-                deadline: block.timestamp
-            })
+
+        PositionConfig memory config = PositionConfig({
+            poolKey: key,
+            tickLower: TickMath.minUsableTick(MAX_TICK_SPACING),
+            tickUpper: TickMath.maxUsableTick(MAX_TICK_SPACING)
+        });
+
+        cpm.mint(
+            config,
+            // liquidity:
+            10e18,
+            // amount0Max:
+            100e18,
+            // amount1Max:
+            100e18,
+            // owner:
+            address(this),
+            // hookData:
+            ZERO_BYTES
         );
 
         CLGeomeanOracle.ObservationState memory observationState = geomeanOracle.getState(key);
@@ -202,19 +234,24 @@ contract CLGeomeanOracleHookTest is Test, Deployers {
         assertEq(observationState.cardinality, 1);
         assertEq(observationState.cardinalityNext, 2);
 
-        nfp.mint(
-            INonfungiblePositionManager.MintParams({
-                poolKey: key,
-                tickLower: TickMath.minUsableTick(MAX_TICK_SPACING),
-                tickUpper: TickMath.maxUsableTick(MAX_TICK_SPACING),
-                salt: bytes32(0),
-                amount0Desired: 1e18,
-                amount1Desired: 1e18,
-                amount0Min: 0,
-                amount1Min: 0,
-                recipient: address(this),
-                deadline: block.timestamp
-            })
+        PositionConfig memory config = PositionConfig({
+            poolKey: key,
+            tickLower: TickMath.minUsableTick(MAX_TICK_SPACING),
+            tickUpper: TickMath.maxUsableTick(MAX_TICK_SPACING)
+        });
+
+        cpm.mint(
+            config,
+            // liquidity:
+            10e18,
+            // amount0Max:
+            100e18,
+            // amount1Max:
+            100e18,
+            // owner:
+            address(this),
+            // hookData:
+            ZERO_BYTES
         );
 
         // cardinality is updated
@@ -241,30 +278,47 @@ contract CLGeomeanOracleHookTest is Test, Deployers {
     function testPermanentLiquidity() public {
         poolManager.initialize(key, Constants.SQRT_RATIO_2_1, ZERO_BYTES);
         vm.warp(3); // advance 2 seconds
-        (uint256 tokenId, uint128 liquidity,,) = nfp.mint(
-            INonfungiblePositionManager.MintParams({
-                poolKey: key,
-                tickLower: TickMath.minUsableTick(MAX_TICK_SPACING),
-                tickUpper: TickMath.maxUsableTick(MAX_TICK_SPACING),
-                salt: bytes32(0),
-                amount0Desired: 1e18,
-                amount1Desired: 1e18,
-                amount0Min: 0,
-                amount1Min: 0,
-                recipient: address(this),
-                deadline: block.timestamp
-            })
+
+        PositionConfig memory config = PositionConfig({
+            poolKey: key,
+            tickLower: TickMath.minUsableTick(MAX_TICK_SPACING),
+            tickUpper: TickMath.maxUsableTick(MAX_TICK_SPACING)
+        });
+
+        (uint256 tokenId, uint128 liquidity) = cpm.mint(
+            config,
+            // liquidity:
+            10e18,
+            // amount0Max:
+            100e18,
+            // amount1Max:
+            100e18,
+            // owner:
+            address(this),
+            // hookData:
+            ZERO_BYTES
         );
 
-        vm.expectRevert(CLGeomeanOracle.OraclePoolMustLockLiquidity.selector);
-        nfp.decreaseLiquidity(
-            INonfungiblePositionManager.DecreaseLiquidityParams({
-                tokenId: tokenId,
-                liquidity: liquidity,
-                amount0Min: 0,
-                amount1Min: 0,
-                deadline: block.timestamp
-            })
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Hooks.Wrap__FailedHookCall.selector,
+                address(geomeanOracle),
+                abi.encodeWithSelector(CLGeomeanOracle.OraclePoolMustLockLiquidity.selector)
+            )
+        );
+        cpm.decreaseLiquidity(
+            // tokenId:
+            tokenId,
+            // config:
+            config,
+            // liquidity:
+            liquidity,
+            // amount0Min:
+            0,
+            // amount1Min:
+            0,
+            // hookData:
+            ZERO_BYTES
         );
     }
 }
