@@ -22,7 +22,7 @@ contract DeployCLVeCakeExclusiveHookScript is BaseScript {
         address clPoolManager = getAddressFromConfig("clPoolManager");
         emit log_named_address("CLPoolManager", clPoolManager);
 
-        address veCake = getAddressFromConfig("veCake");
+        address veCake = getAddressFromConfig("mockVeCake");
         emit log_named_address("VeCake", veCake);
 
         CLVeCakeExclusiveHook clVeCakeExclusiveHook =

@@ -22,12 +22,12 @@ contract DeployBinVeCakeExclusiveHookScript is BaseScript {
         address binPoolManager = getAddressFromConfig("binPoolManager");
         emit log_named_address("BinPoolManager", binPoolManager);
 
-        address veCake = getAddressFromConfig("veCake");
+        address veCake = getAddressFromConfig("mockVeCake");
         emit log_named_address("VeCake", veCake);
 
         BinVeCakeExclusiveHook binVeCakeExclusiveHook =
             new BinVeCakeExclusiveHook(IBinPoolManager(binPoolManager), address(veCake));
-        emit log_named_address("CLVeCakeExclusiveHook", address(binVeCakeExclusiveHook));
+        emit log_named_address("BinVeCakeExclusiveHook", address(binVeCakeExclusiveHook));
 
         vm.stopBroadcast();
     }
