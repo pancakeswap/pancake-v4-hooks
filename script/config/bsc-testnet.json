@@ -6,6 +6,8 @@
     "binPositionManager": "0x26008c91a2D47147d6739db3fFd3598A27da859d",
     "mockVeCake": "0x86668337a40CaAd59F463E89550c6Aa59C056988",
     "clVeCakeExclusiveHook": "0x3290880eB5b48Ee5CF1E8e381DDe932F7D696B27",
-    "binVeCakeExclusiveHook": "0x6203377AE3B7e1592806909836F6DC6b39026a60"
+    "binVeCakeExclusiveHook": "0x6203377AE3B7e1592806909836F6DC6b39026a60",
+    "sampleCLDynamicFeeHook": "0x0b9A17ACD77Ab0a55ae9324381E996eC29E57a1f",
+    "sampleBinDynamicFeeHook": "0x76e4E397c02E370E6bCf96177e7bed3D12bF57fD"
   }
   
