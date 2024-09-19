@@ -23,7 +23,6 @@ import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol"
 
 import {MockCLSwapRouter} from "./helpers/MockCLSwapRouter.sol";
 import {MockCLPositionManager} from "./helpers/MockCLPositionManager.sol";
-import {PositionConfig} from "pancake-v4-periphery/src/pool-cl/libraries/PositionConfig.sol";
 
 import {CLFullRange} from "../../src/pool-cl/full-range/CLFullRange.sol";
 import {PancakeV4ERC20} from "../../src/pool-cl/full-range/libraries/PancakeV4ERC20.sol";

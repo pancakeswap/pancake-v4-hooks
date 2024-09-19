@@ -23,8 +23,6 @@ import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol"
 
 import {MockCLSwapRouter} from "./helpers/MockCLSwapRouter.sol";
 import {MockCLPositionManager} from "./helpers/MockCLPositionManager.sol";
-import {PositionConfig} from "pancake-v4-periphery/src/pool-cl/libraries/PositionConfig.sol";
-
 import {CLLimitOrder, Epoch, EpochLibrary} from "../../src/pool-cl/limit-order/CLLimitOrder.sol";
 
 contract CLLimitOrderHookTest is Test, Deployers, DeployPermit2 {
@@ -81,10 +79,10 @@ contract CLLimitOrderHookTest is Test, Deployers, DeployPermit2 {
 
         poolManager.initialize(key, SQRT_RATIO_1_1, ZERO_BYTES);
 
-        PositionConfig memory config = PositionConfig({poolKey: key, tickLower: -120, tickUpper: 120});
-
         cpm.mint(
-            config,
+            key,
+            -120,
+            120,
             // liquidity:
             10e18,
             // amount0Max:

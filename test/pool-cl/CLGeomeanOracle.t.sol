@@ -24,8 +24,6 @@ import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol"
 
 import {MockCLSwapRouter} from "./helpers/MockCLSwapRouter.sol";
 import {MockCLPositionManager} from "./helpers/MockCLPositionManager.sol";
-import {PositionConfig} from "pancake-v4-periphery/src/pool-cl/libraries/PositionConfig.sol";
-
 import {CLGeomeanOracle} from "../../src/pool-cl/geomean-oracle/CLGeomeanOracle.sol";
 import {Oracle} from "../../src/pool-cl/geomean-oracle/libraries/Oracle.sol";
 
@@ -157,14 +155,10 @@ contract CLGeomeanOracleHookTest is Test, Deployers, DeployPermit2 {
     function testBeforeModifyPositionNoObservations() public {
         poolManager.initialize(key, Constants.SQRT_RATIO_2_1, ZERO_BYTES);
 
-        PositionConfig memory config = PositionConfig({
-            poolKey: key,
-            tickLower: TickMath.minUsableTick(MAX_TICK_SPACING),
-            tickUpper: TickMath.maxUsableTick(MAX_TICK_SPACING)
-        });
-
         cpm.mint(
-            config,
+            key,
+            TickMath.minUsableTick(MAX_TICK_SPACING),
+            TickMath.maxUsableTick(MAX_TICK_SPACING),
             // liquidity:
             10e18,
             // amount0Max:
@@ -193,14 +187,10 @@ contract CLGeomeanOracleHookTest is Test, Deployers, DeployPermit2 {
         poolManager.initialize(key, Constants.SQRT_RATIO_2_1, ZERO_BYTES);
         vm.warp(3); // advance 2 seconds
 
-        PositionConfig memory config = PositionConfig({
-            poolKey: key,
-            tickLower: TickMath.minUsableTick(MAX_TICK_SPACING),
-            tickUpper: TickMath.maxUsableTick(MAX_TICK_SPACING)
-        });
-
         cpm.mint(
-            config,
+            key,
+            TickMath.minUsableTick(MAX_TICK_SPACING),
+            TickMath.maxUsableTick(MAX_TICK_SPACING),
             // liquidity:
             10e18,
             // amount0Max:
@@ -234,14 +224,10 @@ contract CLGeomeanOracleHookTest is Test, Deployers, DeployPermit2 {
         assertEq(observationState.cardinality, 1);
         assertEq(observationState.cardinalityNext, 2);
 
-        PositionConfig memory config = PositionConfig({
-            poolKey: key,
-            tickLower: TickMath.minUsableTick(MAX_TICK_SPACING),
-            tickUpper: TickMath.maxUsableTick(MAX_TICK_SPACING)
-        });
-
         cpm.mint(
-            config,
+            key,
+            TickMath.minUsableTick(MAX_TICK_SPACING),
+            TickMath.maxUsableTick(MAX_TICK_SPACING),
             // liquidity:
             10e18,
             // amount0Max:
@@ -279,14 +265,10 @@ contract CLGeomeanOracleHookTest is Test, Deployers, DeployPermit2 {
         poolManager.initialize(key, Constants.SQRT_RATIO_2_1, ZERO_BYTES);
         vm.warp(3); // advance 2 seconds
 
-        PositionConfig memory config = PositionConfig({
-            poolKey: key,
-            tickLower: TickMath.minUsableTick(MAX_TICK_SPACING),
-            tickUpper: TickMath.maxUsableTick(MAX_TICK_SPACING)
-        });
-
         (uint256 tokenId, uint128 liquidity) = cpm.mint(
-            config,
+            key,
+            TickMath.minUsableTick(MAX_TICK_SPACING),
+            TickMath.maxUsableTick(MAX_TICK_SPACING),
             // liquidity:
             10e18,
             // amount0Max:
@@ -309,8 +291,8 @@ contract CLGeomeanOracleHookTest is Test, Deployers, DeployPermit2 {
         cpm.decreaseLiquidity(
             // tokenId:
             tokenId,
-            // config:
-            config,
+            // poolKey:
+            key,
             // liquidity:
             liquidity,
             // amount0Min:

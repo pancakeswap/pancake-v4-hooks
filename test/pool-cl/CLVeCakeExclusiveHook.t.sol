@@ -22,7 +22,6 @@ import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol"
 
 import {MockCLSwapRouter} from "./helpers/MockCLSwapRouter.sol";
 import {MockCLPositionManager} from "./helpers/MockCLPositionManager.sol";
-import {PositionConfig} from "pancake-v4-periphery/src/pool-cl/libraries/PositionConfig.sol";
 import {CLVeCakeExclusiveHook} from "../../src/pool-cl/vecake-exclusive/CLVeCakeExclusiveHook.sol";
 
 contract CLVeCakeExclusiveHookTest is Test, Deployers, DeployPermit2 {
@@ -45,7 +44,6 @@ contract CLVeCakeExclusiveHookTest is Test, Deployers, DeployPermit2 {
     Currency currency1;
     PoolKey key;
     PoolId id;
-    PositionConfig config;
 
     MockERC20 veCake;
     address nonHolder = address(0x1);
@@ -80,13 +78,15 @@ contract CLVeCakeExclusiveHookTest is Test, Deployers, DeployPermit2 {
             fee: 3000,
             parameters: bytes32(uint256(veCakeExclusiveHook.getHooksRegistrationBitmap())).setTickSpacing(60)
         });
-        config = PositionConfig({poolKey: key, tickLower: -120, tickUpper: 120});
+
         id = key.toId();
 
         poolManager.initialize(key, SQRT_RATIO_1_1, ZERO_BYTES);
 
         cpm.mint(
-            config,
+            key,
+            -120,
+            120,
             // liquidity:
             10e18,
             // amount0Max:

@@ -65,7 +65,7 @@ contract Deployers {
 
     function createFreshManager() internal returns (IVault vault, BinPoolManager manager) {
         vault = new Vault();
-        manager = new BinPoolManager(vault, 500000);
+        manager = new BinPoolManager(vault);
         vault.registerApp(address(manager));
     }
 }
