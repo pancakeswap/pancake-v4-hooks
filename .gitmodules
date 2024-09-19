@@ -7,3 +7,6 @@
 [submodule "lib/pancake-v4-universal-router"]
 	path = lib/pancake-v4-universal-router
 	url = https://github.com/pancakeswap/pancake-v4-universal-router
+[submodule "lib/prb-math"]
+	path = lib/prb-math
+	url = https://github.com/PaulRBerg/prb-math
