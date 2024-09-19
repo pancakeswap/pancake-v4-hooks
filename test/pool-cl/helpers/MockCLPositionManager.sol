@@ -11,17 +11,19 @@ import {CLPositionManager} from "pancake-v4-periphery/src/pool-cl/CLPositionMana
 import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol";
 import {Planner, Plan} from "pancake-v4-periphery/src/libraries/Planner.sol";
 import {Actions} from "pancake-v4-periphery/src/libraries/Actions.sol";
-import {PositionConfig} from "pancake-v4-periphery/src/pool-cl/libraries/PositionConfig.sol";
+import {PoolKey} from "pancake-v4-core/src/types/PoolKey.sol";
 
 contract MockCLPositionManager is CLPositionManager, CommonBase {
     using Planner for Plan;
 
     constructor(IVault _vault, ICLPoolManager _clPoolManager, IAllowanceTransfer _permit2)
-        CLPositionManager(_vault, _clPoolManager, _permit2)
+        CLPositionManager(_vault, _clPoolManager, _permit2, 500000)
     {}
 
     function mint(
-        PositionConfig calldata config,
+        PoolKey calldata poolKey,
+        int24 tickLower,
+        int24 tickUpper,
         uint256 liquidity,
         uint128 amount0Max,
         uint128 amount1Max,
@@ -29,32 +31,31 @@ contract MockCLPositionManager is CLPositionManager, CommonBase {
         bytes calldata hookData
     ) external payable returns (uint256 tokenId, uint128 liquidityMinted) {
         Plan memory planner = Planner.init().add(
-            Actions.CL_MINT_POSITION, abi.encode(config, liquidity, amount0Max, amount1Max, owner, hookData)
+            Actions.CL_MINT_POSITION,
+            abi.encode(poolKey, tickLower, tickUpper, liquidity, amount0Max, amount1Max, owner, hookData)
         );
-        bytes memory data = planner.finalizeModifyLiquidityWithClose(config.poolKey);
-
-        // vm.recordLogs();
+        bytes memory data = planner.finalizeModifyLiquidityWithClose(poolKey);
 
         tokenId = nextTokenId;
 
         vm.prank(msg.sender);
         this.modifyLiquidities(data, block.timestamp);
 
-        liquidityMinted = getPositionLiquidity(tokenId, config);
+        liquidityMinted = _getLiquidity(tokenId, poolKey, tickLower, tickUpper);
     }
 
     function decreaseLiquidity(
         uint256 tokenId,
-        PositionConfig calldata config,
+        PoolKey calldata poolKey,
         uint256 liquidity,
         uint128 amount0Min,
         uint128 amount1Min,
         bytes calldata hookData
     ) external payable {
         Plan memory planner = Planner.init().add(
-            Actions.CL_DECREASE_LIQUIDITY, abi.encode(tokenId, config, liquidity, amount0Min, amount1Min, hookData)
+            Actions.CL_DECREASE_LIQUIDITY, abi.encode(tokenId, liquidity, amount0Min, amount1Min, hookData)
         );
-        bytes memory data = planner.finalizeModifyLiquidityWithClose(config.poolKey);
+        bytes memory data = planner.finalizeModifyLiquidityWithClose(poolKey);
 
         vm.prank(msg.sender);
         this.modifyLiquidities(data, block.timestamp);
