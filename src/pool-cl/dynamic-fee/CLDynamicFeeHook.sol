@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.26;
 
 import {CLBaseHook} from "../CLBaseHook.sol";
 import {FullMath} from "pancake-v4-core/src/pool-cl/libraries/FullMath.sol";
@@ -9,10 +9,6 @@ import {PoolKey} from "pancake-v4-core/src/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "pancake-v4-core/src/types/PoolId.sol";
 import {Currency} from "pancake-v4-core/src/types/Currency.sol";
 import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "pancake-v4-core/src/types/BeforeSwapDelta.sol";
-import {
-    HOOKS_BEFORE_INITIALIZE_OFFSET,
-    HOOKS_BEFORE_SWAP_OFFSET
-} from "pancake-v4-core/src/pool-cl/interfaces/ICLHooks.sol";
 import {ICLPoolManager} from "pancake-v4-core/src/pool-cl/interfaces/ICLPoolManager.sol";
 import {CLPoolManager} from "pancake-v4-core/src/pool-cl/CLPoolManager.sol";
 import {SD59x18, UNIT, convert, sub, mul, div, inv, exp, lt} from "prb-math/SD59x18.sol";
@@ -23,14 +19,16 @@ contract CLDynamicFeeHook is CLBaseHook {
     using PoolIdLibrary for PoolKey;
     using LPFeeLibrary for uint24;
 
-    struct PoolInfo {
+    struct PoolConfig {
         IPriceFeed priceFeed;
         uint24 DFF_max; // in hundredth of bips
+        uint24 baseLpFee;
     }
 
     struct InitializeHookData {
         IPriceFeed priceFeed;
         uint24 DFF_max;
+        uint24 baseLpFee;
     }
 
     struct CallbackData {
@@ -40,21 +38,49 @@ contract CLDynamicFeeHook is CLBaseHook {
         bytes hookData;
     }
 
-    mapping(PoolId id => PoolInfo poolInfo) public poolInfos;
+    // ============================== Variables ================================
 
-    uint24 private _fee;
+    mapping(PoolId id => PoolConfig) public poolConfigs;
+
+    // TODO: Make it transient
     bool private _isSim;
+
+    // ============================== Events ===================================
+
+    // ============================== Errors ===================================
 
     error NotDynamicFeePool();
     error PriceFeedTokensNotMatch();
     error DFFMaxTooLarge();
+    error BaseLpFeeTooLarge();
     error DFFTooLarge();
     error SwapAndRevert(uint160 sqrtPriceX96);
 
+    // ============================== Modifiers ================================
+
+    // ========================= External Functions ============================
+
     constructor(ICLPoolManager poolManager) CLBaseHook(poolManager) {}
 
-    function getHooksRegistrationBitmap() external view override returns (uint16) {
-        return uint16(1 << HOOKS_BEFORE_INITIALIZE_OFFSET | 1 << HOOKS_BEFORE_SWAP_OFFSET);
+    function getHooksRegistrationBitmap() external pure override returns (uint16) {
+        return _hooksRegistrationBitmapFrom(
+            Permissions({
+                beforeInitialize: true,
+                afterInitialize: false,
+                beforeAddLiquidity: false,
+                afterAddLiquidity: false,
+                beforeRemoveLiquidity: false,
+                afterRemoveLiquidity: false,
+                beforeSwap: true,
+                afterSwap: false,
+                beforeDonate: false,
+                afterDonate: false,
+                beforeSwapReturnsDelta: false,
+                afterSwapReturnsDelta: false,
+                afterAddLiquidiyReturnsDelta: false,
+                afterRemoveLiquidiyReturnsDelta: false
+            })
+        );
     }
 
     function beforeInitialize(address sender, PoolKey calldata key, uint160 sqrtPriceX96, bytes calldata hookData)
@@ -77,11 +103,21 @@ contract CLDynamicFeeHook is CLBaseHook {
             revert PriceFeedTokensNotMatch();
         }
 
-        if (initializeHookData.DFF_max > 1000000) {
+        if (initializeHookData.DFF_max > 1_000_000) {
             revert DFFMaxTooLarge();
         }
 
-        poolInfos[key.toId()] = PoolInfo({priceFeed: priceFeed, DFF_max: initializeHookData.DFF_max});
+        if (initializeHookData.baseLpFee > 1_000_000) {
+            revert BaseLpFeeTooLarge();
+        }
+
+        poolConfigs[key.toId()] = PoolConfig({
+            priceFeed: priceFeed,
+            DFF_max: initializeHookData.DFF_max,
+            baseLpFee: initializeHookData.baseLpFee
+        });
+
+        poolManager.updateDynamicLPFee(key, initializeHookData.baseLpFee);
 
         return this.beforeInitialize.selector;
     }
@@ -92,16 +128,13 @@ contract CLDynamicFeeHook is CLBaseHook {
         ICLPoolManager.SwapParams calldata params,
         bytes calldata hookData
     ) external override returns (bytes4, BeforeSwapDelta, uint24) {
-        uint24 staticFee = key.fee & (~LPFeeLibrary.DYNAMIC_FEE_FLAG);
+        PoolId id = key.toId();
+        PoolConfig memory poolConfig = poolConfigs[id];
+        uint24 baseLpFee = poolConfig.baseLpFee;
 
         if (_isSim) {
-            _fee = staticFee;
-            poolManager.updateDynamicLPFee(key, _fee);
-
             return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
         }
-
-        PoolId id = key.toId();
 
         (uint160 sqrtPriceX96Before,,,) = poolManager.getSlot0(id);
         uint160 sqrtPriceX96After = _simulateSwap(key, params, hookData);
@@ -109,8 +142,7 @@ contract CLDynamicFeeHook is CLBaseHook {
         uint160 priceX96Before = uint160(FullMath.mulDiv(sqrtPriceX96Before, sqrtPriceX96Before, FixedPoint96.Q96));
         uint160 priceX96After = uint160(FullMath.mulDiv(sqrtPriceX96After, sqrtPriceX96After, FixedPoint96.Q96));
 
-        PoolInfo memory poolInfo = poolInfos[id];
-        uint256 priceX96Oracle = poolInfo.priceFeed.getPriceX96();
+        uint256 priceX96Oracle = poolConfig.priceFeed.getPriceX96();
 
         uint256 sfX96;
         {
@@ -133,7 +165,7 @@ contract CLDynamicFeeHook is CLBaseHook {
         uint256 pifX96 = FullMath.mulDiv(sfX96, ipX96, FixedPoint96.Q96);
 
         SD59x18 DFF;
-        uint256 fX96 = FullMath.mulDiv(key.fee.getInitialLPFee(), FixedPoint96.Q96, 1_000_000);
+        uint256 fX96 = FullMath.mulDiv(baseLpFee, FixedPoint96.Q96, 1_000_000);
         if (pifX96 > fX96) {
             SD59x18 inter = inv(
                 exp(
@@ -142,14 +174,11 @@ contract CLDynamicFeeHook is CLBaseHook {
                 )
             );
             if (inter < UNIT) {
-                DFF = convert(int256(int24(poolInfo.DFF_max))) * (UNIT - inter);
+                DFF = convert(int256(int24(poolConfig.DFF_max))) * (UNIT - inter);
             }
         }
 
         if (DFF.isZero()) {
-            _fee = staticFee;
-            poolManager.updateDynamicLPFee(key, _fee);
-
             return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
         }
 
@@ -157,11 +186,12 @@ contract CLDynamicFeeHook is CLBaseHook {
             revert DFFTooLarge();
         }
 
-        _fee = uint24(int24(convert(DFF)));
-        poolManager.updateDynamicLPFee(key, _fee);
+        uint24 lpFee = uint24(int24(convert(DFF)));
 
-        return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
+        return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, lpFee | LPFeeLibrary.OVERRIDE_FEE_FLAG);
     }
+
+    // ========================= Internal Functions ============================
 
     /// @dev Simulate `swap`
     function _simulateSwap(PoolKey calldata key, ICLPoolManager.SwapParams calldata params, bytes calldata hookData)
@@ -169,8 +199,7 @@ contract CLDynamicFeeHook is CLBaseHook {
         returns (uint160 sqrtPriceX96)
     {
         _isSim = true;
-        // TODO: Ugly, should add vault() to IFees interface!
-        try CLPoolManager(address(poolManager)).vault().lock(
+        try poolManager.vault().lock(
             abi.encode(CallbackData({sender: msg.sender, key: key, params: params, hookData: hookData}))
         ) {
             revert();
