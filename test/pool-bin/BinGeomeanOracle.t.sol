@@ -129,14 +129,15 @@ contract BinGeomeanOracleHookTest is Test, Deployers, DeployPermit2 {
                     poolKey: key,
                     amount0: 1e18,
                     amount1: 1e18,
-                    amount0Min: 0,
-                    amount1Min: 0,
+                    amount0Max: 1e18,
+                    amount1Max: 1e18,
                     activeIdDesired: BIN_ID_1_1,
                     idSlippage: 0,
                     deltaIds: deltaIds,
                     distributionX: distributionX,
                     distributionY: distributionY,
-                    to: address(this)
+                    to: address(this),
+                    hookData: ZERO_BYTES
                 })
             );
 
@@ -169,14 +170,15 @@ contract BinGeomeanOracleHookTest is Test, Deployers, DeployPermit2 {
                     poolKey: key,
                     amount0: 1e18,
                     amount1: 1e18,
-                    amount0Min: 0,
-                    amount1Min: 0,
+                    amount0Max: 1e18,
+                    amount1Max: 1e18,
                     activeIdDesired: BIN_ID_1_1,
                     idSlippage: 0,
                     deltaIds: deltaIds,
                     distributionX: distributionX,
                     distributionY: distributionY,
-                    to: address(this)
+                    to: address(this),
+                    hookData: ZERO_BYTES
                 })
             );
 
@@ -210,14 +212,15 @@ contract BinGeomeanOracleHookTest is Test, Deployers, DeployPermit2 {
                 poolKey: key,
                 amount0: 1e18,
                 amount1: 1e18,
-                amount0Min: 0,
-                amount1Min: 0,
+                amount0Max: 1e18,
+                amount1Max: 1e18,
                 activeIdDesired: BIN_ID_1_1,
                 idSlippage: 0,
                 deltaIds: deltaIds,
                 distributionX: distributionX,
                 distributionY: distributionY,
-                to: address(this)
+                to: address(this),
+                hookData: ZERO_BYTES
             })
         );
 
@@ -236,7 +239,8 @@ contract BinGeomeanOracleHookTest is Test, Deployers, DeployPermit2 {
                 amount1Min: 0,
                 ids: tokenIds,
                 amounts: liquidityMinted,
-                from: address(this)
+                from: address(this),
+                hookData: ZERO_BYTES
             })
         );
     }
