@@ -100,14 +100,15 @@ contract BinLimitOrderHookTest is Test, Deployers, DeployPermit2 {
                 poolKey: key,
                 amount0: 3 * 1e18,
                 amount1: 3 * 1e18,
-                amount0Min: 0,
-                amount1Min: 0,
+                amount0Max: 3 * 1e18,
+                amount1Max: 3 * 1e18,
                 activeIdDesired: BIN_ID_1_1,
                 idSlippage: 0,
                 deltaIds: deltaIds,
                 distributionX: distributionX,
                 distributionY: distributionY,
-                to: address(this)
+                to: address(this),
+                hookData: ZERO_BYTES
             })
         );
     }
