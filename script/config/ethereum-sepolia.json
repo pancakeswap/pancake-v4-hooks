@@ -7,7 +7,7 @@
     "mockVeCake": "0xA25ECd559680c77185a00a00e33BD9df14a5133e",
     "clVeCakeExclusiveHook": "0x549D196225706804c0A0fa9296c7a32fE6963850",
     "binVeCakeExclusiveHook": "0xCc22705eA9433c8C35a1C93778bbFF76A19F3d55",
-    "sampleCLDynamicFeeHook": "0x6B1fdFc5dFB10DC5735bB242D014B4d4F1fb2c7A",
-    "sampleBinDynamicFeeHook": "0x470a9995c3bf588eE90A7F8e1b5372da1643Bca1"
+    "sampleCLDynamicFeeHook": "0x0E647d71d3b5dfcd2Ad5d77c36723Ef646784664",
+    "sampleBinDynamicFeeHook": "0x8F3654C0eA6712C69bAC45644478942cDe955Db2"
   }
   
