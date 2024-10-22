@@ -57,7 +57,7 @@ contract SampleCLDynamicFeeHook is CLBaseHook {
         bytes calldata hookData
     ) external override returns (bytes4) {
         setDynamicLpFee(key, DEFAULT_LP_FEE);
-        return this.beforeInitialize.selector;
+        return this.afterInitialize.selector;
     }
 
     function beforeSwap(
