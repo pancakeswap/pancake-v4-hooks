@@ -75,7 +75,7 @@ contract BinGeomeanOracle is BinBaseHook {
         oracle.update(parameters, activeId);
     }
 
-    function beforeInitialize(address sender, PoolKey calldata key, uint24 activeId, bytes calldata hookData)
+    function beforeInitialize(address sender, PoolKey calldata key, uint24 activeId)
         external
         override
         poolManagerOnly

@@ -7,6 +7,8 @@ import {Vm} from "forge-std/Vm.sol";
 import {IVault} from "pancake-v4-core/src/interfaces/IVault.sol";
 import {ICLPoolManager} from "pancake-v4-core/src/pool-cl/interfaces/ICLPoolManager.sol";
 import {ICLPositionManager} from "pancake-v4-periphery/src/pool-cl/interfaces/ICLPositionManager.sol";
+import {ICLPositionDescriptor} from "pancake-v4-periphery/src/pool-cl/interfaces/ICLPositionDescriptor.sol";
+import {IWETH9} from "pancake-v4-periphery/src/interfaces/external/IWETH9.sol";
 import {CLPositionManager} from "pancake-v4-periphery/src/pool-cl/CLPositionManager.sol";
 import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol";
 import {Planner, Plan} from "pancake-v4-periphery/src/libraries/Planner.sol";
@@ -17,7 +19,7 @@ contract MockCLPositionManager is CLPositionManager, CommonBase {
     using Planner for Plan;
 
     constructor(IVault _vault, ICLPoolManager _clPoolManager, IAllowanceTransfer _permit2)
-        CLPositionManager(_vault, _clPoolManager, _permit2, 500000)
+        CLPositionManager(_vault, _clPoolManager, _permit2, 500000, ICLPositionDescriptor(address(0)), IWETH9(address(0)))
     {}
 
     function mint(

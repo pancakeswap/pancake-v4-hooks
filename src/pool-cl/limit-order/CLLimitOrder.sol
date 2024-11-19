@@ -151,7 +151,7 @@ contract CLLimitOrder is CLBaseHook {
         return compressed * tickSpacing;
     }
 
-    function afterInitialize(address, PoolKey calldata key, uint160, int24 tick, bytes calldata)
+    function afterInitialize(address, PoolKey calldata key, uint160, int24 tick)
         external
         override
         poolManagerOnly

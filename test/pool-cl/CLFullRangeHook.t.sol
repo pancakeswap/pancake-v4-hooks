@@ -17,6 +17,8 @@ import {Deployers} from "pancake-v4-core/test/pool-cl/helpers/Deployers.sol";
 import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
 
 import {Hooks} from "pancake-v4-core/src/libraries/Hooks.sol";
+import {ICLHooks} from "pancake-v4-core/src/pool-cl/interfaces/ICLHooks.sol";
+import {CustomRevert} from "pancake-v4-core/src/libraries/CustomRevert.sol";
 import {ICLRouterBase} from "pancake-v4-periphery/src/pool-cl/interfaces/ICLRouterBase.sol";
 import {DeployPermit2} from "permit2/test/utils/DeployPermit2.sol";
 import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol";
@@ -127,7 +129,7 @@ contract CLFullRangeHookTest is Test, Deployers, DeployPermit2 {
         permit2.approve(address(token1), address(cpm), type(uint160).max, type(uint48).max);
         permit2.approve(address(token2), address(cpm), type(uint160).max, type(uint48).max);
 
-        poolManager.initialize(keyWithLiq, SQRT_RATIO_1_1, ZERO_BYTES);
+        poolManager.initialize(keyWithLiq, SQRT_RATIO_1_1);
 
         fullRange.addLiquidity(
             CLFullRange.AddLiquidityParams({
@@ -157,12 +159,14 @@ contract CLFullRangeHookTest is Test, Deployers, DeployPermit2 {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                Hooks.Wrap__FailedHookCall.selector,
+                CustomRevert.WrappedError.selector,
                 address(fullRange),
-                abi.encodeWithSelector(CLFullRange.TickSpacingNotDefault.selector)
+                ICLHooks.beforeInitialize.selector,
+                abi.encodeWithSelector(CLFullRange.TickSpacingNotDefault.selector),
+                abi.encodeWithSelector(Hooks.HookCallFailed.selector)
             )
         );
-        poolManager.initialize(wrongKey, SQRT_RATIO_1_1, ZERO_BYTES);
+        poolManager.initialize(wrongKey, SQRT_RATIO_1_1);
     }
 
     function test_RevertIfNoPool() public {
@@ -196,7 +200,7 @@ contract CLFullRangeHookTest is Test, Deployers, DeployPermit2 {
     }
 
     function test_RevertIfTooMuchSlippage() public {
-        poolManager.initialize(key, SQRT_RATIO_1_1, ZERO_BYTES);
+        poolManager.initialize(key, SQRT_RATIO_1_1);
 
         fullRange.addLiquidity(
             CLFullRange.AddLiquidityParams({
@@ -219,7 +223,6 @@ contract CLFullRangeHookTest is Test, Deployers, DeployPermit2 {
                 zeroForOne: true,
                 amountIn: 1e18,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0,
                 hookData: ZERO_BYTES
             }),
             block.timestamp
@@ -243,7 +246,7 @@ contract CLFullRangeHookTest is Test, Deployers, DeployPermit2 {
     }
 
     function test_AddLiquidity() public {
-        poolManager.initialize(key, SQRT_RATIO_1_1, ZERO_BYTES);
+        poolManager.initialize(key, SQRT_RATIO_1_1);
 
         uint256 prevBalance0 = key.currency0.balanceOf(address(this));
         uint256 prevBalance1 = key.currency1.balanceOf(address(this));
@@ -280,7 +283,6 @@ contract CLFullRangeHookTest is Test, Deployers, DeployPermit2 {
                 zeroForOne: true,
                 amountIn: 1e18,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0,
                 hookData: ZERO_BYTES
             }),
             block.timestamp
@@ -310,7 +312,6 @@ contract CLFullRangeHookTest is Test, Deployers, DeployPermit2 {
                 zeroForOne: true,
                 amountIn: 1e18,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0,
                 hookData: ZERO_BYTES
             }),
             block.timestamp
@@ -336,7 +337,7 @@ contract CLFullRangeHookTest is Test, Deployers, DeployPermit2 {
     }
 
     function testFuzz_AddLiquidity(uint256 amount) public {
-        poolManager.initialize(key, SQRT_RATIO_1_1, ZERO_BYTES);
+        poolManager.initialize(key, SQRT_RATIO_1_1);
 
         if (amount <= MINIMUM_LIQUIDITY) {
             vm.expectRevert(CLFullRange.LiquidityDoesntMeetMinimum.selector);
@@ -395,7 +396,7 @@ contract CLFullRangeHookTest is Test, Deployers, DeployPermit2 {
     }
 
     function test_RevertIfNoLiquidity() public {
-        poolManager.initialize(key, SQRT_RATIO_1_1, ZERO_BYTES);
+        poolManager.initialize(key, SQRT_RATIO_1_1);
 
         (, address liquidityToken) = fullRange.poolInfo(id);
 
@@ -444,7 +445,7 @@ contract CLFullRangeHookTest is Test, Deployers, DeployPermit2 {
     }
 
     function testFuzz_RemoveLiquidity(uint256 amount) public {
-        poolManager.initialize(key, SQRT_RATIO_1_1, ZERO_BYTES);
+        poolManager.initialize(key, SQRT_RATIO_1_1);
 
         fullRange.addLiquidity(
             CLFullRange.AddLiquidityParams({

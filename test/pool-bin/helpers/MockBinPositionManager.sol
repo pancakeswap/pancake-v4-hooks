@@ -6,6 +6,7 @@ import {CommonBase} from "forge-std/Base.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {IVault} from "pancake-v4-core/src/interfaces/IVault.sol";
 import {IBinPoolManager} from "pancake-v4-core/src/pool-bin/interfaces/IBinPoolManager.sol";
+import {IWETH9} from "pancake-v4-periphery/src/interfaces/external/IWETH9.sol";
 import {IBinPositionManager} from "pancake-v4-periphery/src/pool-bin/interfaces/IBinPositionManager.sol";
 import {BinPositionManager} from "pancake-v4-periphery/src/pool-bin/BinPositionManager.sol";
 import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol";
@@ -16,7 +17,7 @@ contract MockBinPositionManager is BinPositionManager, CommonBase {
     using Planner for Plan;
 
     constructor(IVault _vault, IBinPoolManager _binPoolManager, IAllowanceTransfer _permit2)
-        BinPositionManager(_vault, _binPoolManager, _permit2)
+        BinPositionManager(_vault, _binPoolManager, _permit2, IWETH9(address(0)))
     {}
 
     function addLiquidity(IBinPositionManager.BinAddLiquidityParams calldata params)

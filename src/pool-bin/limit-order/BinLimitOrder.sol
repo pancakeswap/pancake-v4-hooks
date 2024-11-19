@@ -157,7 +157,7 @@ contract BinLimitOrder is BinBaseHook {
         return epochInfos[epoch].liquidity[owner];
     }
 
-    function afterInitialize(address sender, PoolKey calldata key, uint24 activeId, bytes calldata hookData)
+    function afterInitialize(address sender, PoolKey calldata key, uint24 activeId)
         external
         override
         poolManagerOnly

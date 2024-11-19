@@ -14,6 +14,8 @@ import {BinPoolParametersHelper} from "pancake-v4-core/src/pool-bin/libraries/Bi
 import {Constants} from "pancake-v4-core/src/pool-bin/libraries/Constants.sol";
 import {SortTokens} from "pancake-v4-core/test/helpers/SortTokens.sol";
 import {Hooks} from "pancake-v4-core/src/libraries/Hooks.sol";
+import {IBinHooks} from "pancake-v4-core/src/pool-bin/interfaces/IBinHooks.sol";
+import {CustomRevert} from "pancake-v4-core/src/libraries/CustomRevert.sol";
 import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
 import {IBinRouterBase} from "pancake-v4-periphery/src/pool-bin/interfaces/IBinRouterBase.sol";
 import {IBinPositionManager} from "pancake-v4-periphery/src/pool-bin/interfaces/IBinPositionManager.sol";
@@ -86,16 +88,18 @@ contract BinGeomeanOracleHookTest is Test, Deployers, DeployPermit2 {
         });
         vm.expectRevert(
             abi.encodeWithSelector(
-                Hooks.Wrap__FailedHookCall.selector,
+                CustomRevert.WrappedError.selector,
                 address(geomeanOracle),
-                abi.encodeWithSelector(BinGeomeanOracle.OnlyOneOraclePoolAllowed.selector)
+                IBinHooks.beforeInitialize.selector,
+                abi.encodeWithSelector(BinGeomeanOracle.OnlyOneOraclePoolAllowed.selector),
+                abi.encodeWithSelector(Hooks.HookCallFailed.selector)
             )
         );
-        poolManager.initialize(k, BIN_ID_1_1, ZERO_BYTES);
+        poolManager.initialize(k, BIN_ID_1_1);
     }
 
     function test_InitializePool() public {
-        poolManager.initialize(key, BIN_ID_1_1, ZERO_BYTES);
+        poolManager.initialize(key, BIN_ID_1_1);
 
         (uint8 sampleLifetime, uint16 size, uint16 activeSize, uint40 lastUpdated, uint40 firstTimestamp) =
             geomeanOracle.getOracleParameters(key);
@@ -112,7 +116,7 @@ contract BinGeomeanOracleHookTest is Test, Deployers, DeployPermit2 {
     }
 
     function test_AddLiquidity() public {
-        poolManager.initialize(key, BIN_ID_1_1, ZERO_BYTES);
+        poolManager.initialize(key, BIN_ID_1_1);
 
         geomeanOracle.increaseOracleLength(key, 1);
 
@@ -198,7 +202,7 @@ contract BinGeomeanOracleHookTest is Test, Deployers, DeployPermit2 {
     }
 
     function test_RevertIfRemoveLiquidity() public {
-        poolManager.initialize(key, BIN_ID_1_1, ZERO_BYTES);
+        poolManager.initialize(key, BIN_ID_1_1);
 
         uint256 numBins = 1;
         int256[] memory deltaIds = new int256[](numBins);
@@ -226,9 +230,11 @@ contract BinGeomeanOracleHookTest is Test, Deployers, DeployPermit2 {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                Hooks.Wrap__FailedHookCall.selector,
+                CustomRevert.WrappedError.selector,
                 address(geomeanOracle),
-                abi.encodeWithSelector(BinGeomeanOracle.OraclePoolMustLockLiquidity.selector)
+                IBinHooks.beforeBurn.selector,
+                abi.encodeWithSelector(BinGeomeanOracle.OraclePoolMustLockLiquidity.selector),
+                abi.encodeWithSelector(Hooks.HookCallFailed.selector)
             )
         );
 

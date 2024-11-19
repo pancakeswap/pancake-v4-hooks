@@ -111,12 +111,12 @@ abstract contract BinBaseHook is IBinHooks {
     }
 
     /// @inheritdoc IBinHooks
-    function beforeInitialize(address, PoolKey calldata, uint24, bytes calldata) external virtual returns (bytes4) {
+    function beforeInitialize(address, PoolKey calldata, uint24) external virtual returns (bytes4) {
         revert HookNotImplemented();
     }
 
     /// @inheritdoc IBinHooks
-    function afterInitialize(address, PoolKey calldata, uint24, bytes calldata) external virtual returns (bytes4) {
+    function afterInitialize(address, PoolKey calldata, uint24) external virtual returns (bytes4) {
         revert HookNotImplemented();
     }
 
