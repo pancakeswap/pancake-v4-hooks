@@ -16,6 +16,8 @@ import {Deployers} from "pancake-v4-core/test/pool-cl/helpers/Deployers.sol";
 import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
 
 import {Hooks} from "pancake-v4-core/src/libraries/Hooks.sol";
+import {ICLHooks} from "pancake-v4-core/src/pool-cl/interfaces/ICLHooks.sol";
+import {CustomRevert} from "pancake-v4-core/src/libraries/CustomRevert.sol";
 import {ICLRouterBase} from "pancake-v4-periphery/src/pool-cl/interfaces/ICLRouterBase.sol";
 import {DeployPermit2} from "permit2/test/utils/DeployPermit2.sol";
 import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol";
@@ -81,7 +83,7 @@ contract CLVeCakeExclusiveHookTest is Test, Deployers, DeployPermit2 {
 
         id = key.toId();
 
-        poolManager.initialize(key, SQRT_RATIO_1_1, ZERO_BYTES);
+        poolManager.initialize(key, SQRT_RATIO_1_1);
 
         cpm.mint(
             key,
@@ -104,9 +106,11 @@ contract CLVeCakeExclusiveHookTest is Test, Deployers, DeployPermit2 {
         vm.prank(nonHolder, nonHolder);
         vm.expectRevert(
             abi.encodeWithSelector(
-                Hooks.Wrap__FailedHookCall.selector,
-                address(veCakeExclusiveHook),
-                abi.encodeWithSelector(CLVeCakeExclusiveHook.NotVeCakeHolder.selector)
+                CustomRevert.WrappedError.selector,
+                address(key.hooks),
+                ICLHooks.beforeSwap.selector,
+                abi.encodeWithSelector(CLVeCakeExclusiveHook.NotVeCakeHolder.selector),
+                abi.encodeWithSelector(Hooks.HookCallFailed.selector)
             )
         );
         swapRouter.exactInputSingle(
@@ -115,7 +119,6 @@ contract CLVeCakeExclusiveHookTest is Test, Deployers, DeployPermit2 {
                 zeroForOne: true,
                 amountIn: 1e18,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0,
                 hookData: ZERO_BYTES
             }),
             block.timestamp
@@ -130,7 +133,6 @@ contract CLVeCakeExclusiveHookTest is Test, Deployers, DeployPermit2 {
                 zeroForOne: true,
                 amountIn: 1e18,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0,
                 hookData: ZERO_BYTES
             }),
             block.timestamp

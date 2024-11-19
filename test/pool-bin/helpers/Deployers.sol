@@ -60,7 +60,7 @@ contract Deployers {
                 : bytes32(uint256(((fee / 100 * 2) << 16) | 0x00ff))
         );
         id = key.toId();
-        manager.initialize(key, activeId, initData);
+        manager.initialize(key, activeId);
     }
 
     function createFreshManager() internal returns (IVault vault, BinPoolManager manager) {

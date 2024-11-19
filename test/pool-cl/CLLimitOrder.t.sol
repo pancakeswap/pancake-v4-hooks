@@ -77,7 +77,7 @@ contract CLLimitOrderHookTest is Test, Deployers, DeployPermit2 {
         });
         id = key.toId();
 
-        poolManager.initialize(key, SQRT_RATIO_1_1, ZERO_BYTES);
+        poolManager.initialize(key, SQRT_RATIO_1_1);
 
         cpm.mint(
             key,
@@ -110,7 +110,7 @@ contract CLLimitOrderHookTest is Test, Deployers, DeployPermit2 {
             parameters: bytes32(uint256(limitOrder.getHooksRegistrationBitmap())).setTickSpacing(61)
         });
 
-        poolManager.initialize(differentKey, SQRT_RATIO_10_1, ZERO_BYTES);
+        poolManager.initialize(differentKey, SQRT_RATIO_10_1);
         assertEq(limitOrder.getTickLowerLast(differentKey.toId()), 22997);
     }
 
@@ -154,13 +154,12 @@ contract CLLimitOrderHookTest is Test, Deployers, DeployPermit2 {
                 zeroForOne: false,
                 amountIn: 1e18,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: SQRT_RATIO_1_1 + 1,
                 hookData: ZERO_BYTES
             }),
             block.timestamp
         );
 
-        vm.expectRevert(CLLimitOrder.InRange.selector);
+        vm.expectRevert(CLLimitOrder.CrossedRange.selector);
         limitOrder.place(key, 0, true, 1000000);
     }
 
@@ -186,13 +185,12 @@ contract CLLimitOrderHookTest is Test, Deployers, DeployPermit2 {
                 zeroForOne: true,
                 amountIn: 1e18,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: SQRT_RATIO_1_1 - 1,
                 hookData: ZERO_BYTES
             }),
             block.timestamp
         );
 
-        vm.expectRevert(CLLimitOrder.InRange.selector);
+        vm.expectRevert(CLLimitOrder.CrossedRange.selector);
         limitOrder.place(key, -60, false, 1000000);
     }
 
@@ -254,15 +252,14 @@ contract CLLimitOrderHookTest is Test, Deployers, DeployPermit2 {
                 zeroForOne: false,
                 amountIn: 1e18,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: TickMath.getSqrtRatioAtTick(60),
                 hookData: ZERO_BYTES
             }),
             block.timestamp
         );
 
-        assertEq(limitOrder.getTickLowerLast(id), 60);
+        assertEq(limitOrder.getTickLowerLast(id), 887220);
         (, int24 tick,,) = poolManager.getSlot0(id);
-        assertEq(tick, 60);
+        assertEq(tick, 887271);
 
         (bool filled,,, uint256 token0Total, uint256 token1Total,) = limitOrder.epochInfos(Epoch.wrap(1));
 

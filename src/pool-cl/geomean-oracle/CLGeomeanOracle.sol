@@ -87,7 +87,7 @@ contract CLGeomeanOracle is CLBaseHook {
         );
     }
 
-    function beforeInitialize(address, PoolKey calldata key, uint160, bytes calldata)
+    function beforeInitialize(address, PoolKey calldata key, uint160)
         external
         view
         override
@@ -104,7 +104,7 @@ contract CLGeomeanOracle is CLBaseHook {
         return this.beforeInitialize.selector;
     }
 
-    function afterInitialize(address, PoolKey calldata key, uint160, int24, bytes calldata)
+    function afterInitialize(address, PoolKey calldata key, uint160, int24)
         external
         override
         poolManagerOnly

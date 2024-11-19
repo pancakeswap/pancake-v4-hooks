@@ -18,6 +18,8 @@ import {Constants} from "pancake-v4-core/test/pool-cl/helpers/Constants.sol";
 import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
 
 import {Hooks} from "pancake-v4-core/src/libraries/Hooks.sol";
+import {ICLHooks} from "pancake-v4-core/src/pool-cl/interfaces/ICLHooks.sol";
+import {CustomRevert} from "pancake-v4-core/src/libraries/CustomRevert.sol";
 import {ICLRouterBase} from "pancake-v4-periphery/src/pool-cl/interfaces/ICLRouterBase.sol";
 import {DeployPermit2} from "permit2/test/utils/DeployPermit2.sol";
 import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol";
@@ -81,7 +83,7 @@ contract CLGeomeanOracleHookTest is Test, Deployers, DeployPermit2 {
     }
 
     function testBeforeInitializeAllowsPoolCreation() public {
-        poolManager.initialize(key, SQRT_RATIO_1_1, ZERO_BYTES);
+        poolManager.initialize(key, SQRT_RATIO_1_1);
     }
 
     function testBeforeInitializeRevertsIfNonZeroFee() public {
@@ -95,12 +97,14 @@ contract CLGeomeanOracleHookTest is Test, Deployers, DeployPermit2 {
         });
         vm.expectRevert(
             abi.encodeWithSelector(
-                Hooks.Wrap__FailedHookCall.selector,
+                CustomRevert.WrappedError.selector,
                 address(geomeanOracle),
-                abi.encodeWithSelector(CLGeomeanOracle.OnlyOneOraclePoolAllowed.selector)
+                ICLHooks.beforeInitialize.selector,
+                abi.encodeWithSelector(CLGeomeanOracle.OnlyOneOraclePoolAllowed.selector),
+                abi.encodeWithSelector(Hooks.HookCallFailed.selector)
             )
         );
-        poolManager.initialize(k, SQRT_RATIO_1_1, ZERO_BYTES);
+        poolManager.initialize(k, SQRT_RATIO_1_1);
     }
 
     function testBeforeInitializeRevertsIfNotMaxTickSpacing() public {
@@ -114,17 +118,19 @@ contract CLGeomeanOracleHookTest is Test, Deployers, DeployPermit2 {
         });
         vm.expectRevert(
             abi.encodeWithSelector(
-                Hooks.Wrap__FailedHookCall.selector,
+                CustomRevert.WrappedError.selector,
                 address(geomeanOracle),
-                abi.encodeWithSelector(CLGeomeanOracle.OnlyOneOraclePoolAllowed.selector)
+                ICLHooks.beforeInitialize.selector,
+                abi.encodeWithSelector(CLGeomeanOracle.OnlyOneOraclePoolAllowed.selector),
+                abi.encodeWithSelector(Hooks.HookCallFailed.selector)
             )
         );
 
-        poolManager.initialize(k, SQRT_RATIO_1_1, ZERO_BYTES);
+        poolManager.initialize(k, SQRT_RATIO_1_1);
     }
 
     function testAfterInitializeState() public {
-        poolManager.initialize(key, SQRT_RATIO_1_1, ZERO_BYTES);
+        poolManager.initialize(key, SQRT_RATIO_1_1);
         CLGeomeanOracle.ObservationState memory observationState = geomeanOracle.getState(key);
         assertEq(observationState.index, 0);
         assertEq(observationState.cardinality, 1);
@@ -132,7 +138,7 @@ contract CLGeomeanOracleHookTest is Test, Deployers, DeployPermit2 {
     }
 
     function testAfterInitializeObservation() public {
-        poolManager.initialize(key, Constants.SQRT_RATIO_2_1, ZERO_BYTES);
+        poolManager.initialize(key, Constants.SQRT_RATIO_2_1);
         Oracle.Observation memory observation = geomeanOracle.getObservation(key, 0);
         assertTrue(observation.initialized);
         assertEq(observation.blockTimestamp, 1);
@@ -141,7 +147,7 @@ contract CLGeomeanOracleHookTest is Test, Deployers, DeployPermit2 {
     }
 
     function testAfterInitializeObserve0() public {
-        poolManager.initialize(key, Constants.SQRT_RATIO_2_1, ZERO_BYTES);
+        poolManager.initialize(key, Constants.SQRT_RATIO_2_1);
         uint32[] memory secondsAgo = new uint32[](1);
         secondsAgo[0] = 0;
         (int56[] memory tickCumulatives, uint160[] memory secondsPerLiquidityCumulativeX128s) =
@@ -153,7 +159,7 @@ contract CLGeomeanOracleHookTest is Test, Deployers, DeployPermit2 {
     }
 
     function testBeforeModifyPositionNoObservations() public {
-        poolManager.initialize(key, Constants.SQRT_RATIO_2_1, ZERO_BYTES);
+        poolManager.initialize(key, Constants.SQRT_RATIO_2_1);
 
         cpm.mint(
             key,
@@ -184,7 +190,7 @@ contract CLGeomeanOracleHookTest is Test, Deployers, DeployPermit2 {
     }
 
     function testBeforeModifyPositionObservation() public {
-        poolManager.initialize(key, Constants.SQRT_RATIO_2_1, ZERO_BYTES);
+        poolManager.initialize(key, Constants.SQRT_RATIO_2_1);
         vm.warp(3); // advance 2 seconds
 
         cpm.mint(
@@ -216,7 +222,7 @@ contract CLGeomeanOracleHookTest is Test, Deployers, DeployPermit2 {
     }
 
     function testBeforeModifyPositionObservationAndCardinality() public {
-        poolManager.initialize(key, Constants.SQRT_RATIO_2_1, ZERO_BYTES);
+        poolManager.initialize(key, Constants.SQRT_RATIO_2_1);
         vm.warp(3); // advance 2 seconds
         geomeanOracle.increaseCardinalityNext(key, 2);
         CLGeomeanOracle.ObservationState memory observationState = geomeanOracle.getState(key);
@@ -262,7 +268,7 @@ contract CLGeomeanOracleHookTest is Test, Deployers, DeployPermit2 {
     }
 
     function testPermanentLiquidity() public {
-        poolManager.initialize(key, Constants.SQRT_RATIO_2_1, ZERO_BYTES);
+        poolManager.initialize(key, Constants.SQRT_RATIO_2_1);
         vm.warp(3); // advance 2 seconds
 
         (uint256 tokenId, uint128 liquidity) = cpm.mint(
@@ -283,9 +289,11 @@ contract CLGeomeanOracleHookTest is Test, Deployers, DeployPermit2 {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                Hooks.Wrap__FailedHookCall.selector,
-                address(geomeanOracle),
-                abi.encodeWithSelector(CLGeomeanOracle.OraclePoolMustLockLiquidity.selector)
+                CustomRevert.WrappedError.selector,
+                address(key.hooks),
+                ICLHooks.beforeRemoveLiquidity.selector,
+                abi.encodeWithSelector(CLGeomeanOracle.OraclePoolMustLockLiquidity.selector),
+                abi.encodeWithSelector(Hooks.HookCallFailed.selector)
             )
         );
         cpm.decreaseLiquidity(

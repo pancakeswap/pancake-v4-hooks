@@ -74,7 +74,7 @@ contract BinLimitOrderHookTest is Test, Deployers, DeployPermit2 {
         });
         id = key.toId();
 
-        poolManager.initialize(key, BIN_ID_1_1, ZERO_BYTES);
+        poolManager.initialize(key, BIN_ID_1_1);
 
         uint256 numBins = 5;
         int256[] memory deltaIds = new int256[](numBins);
@@ -127,7 +127,7 @@ contract BinLimitOrderHookTest is Test, Deployers, DeployPermit2 {
             parameters: bytes32(uint256(limitOrder.getHooksRegistrationBitmap())).setBinStep(61)
         });
 
-        poolManager.initialize(differentKey, BIN_ID_1_1 + 1, ZERO_BYTES);
+        poolManager.initialize(differentKey, BIN_ID_1_1 + 1);
         assertEq(limitOrder.getActiveIdLast(differentKey.toId()), BIN_ID_1_1 + 1);
     }
 

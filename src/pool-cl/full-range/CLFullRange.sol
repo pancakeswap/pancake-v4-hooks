@@ -248,7 +248,7 @@ contract CLFullRange is CLBaseHook {
 
     /// @dev Deploy a new liquidity token for the pool and initialize the
     /// PoolInfo
-    function beforeInitialize(address, PoolKey calldata key, uint160, bytes calldata)
+    function beforeInitialize(address, PoolKey calldata key, uint160)
         external
         override
         poolManagerOnly

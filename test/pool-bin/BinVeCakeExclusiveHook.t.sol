@@ -8,6 +8,8 @@ import {Vault} from "pancake-v4-core/src/Vault.sol";
 import {IBinPoolManager} from "pancake-v4-core/src/pool-bin/interfaces/IBinPoolManager.sol";
 import {Currency} from "pancake-v4-core/src/types/Currency.sol";
 import {Hooks} from "pancake-v4-core/src/libraries/Hooks.sol";
+import {IBinHooks} from "pancake-v4-core/src/pool-bin/interfaces/IBinHooks.sol";
+import {CustomRevert} from "pancake-v4-core/src/libraries/CustomRevert.sol";
 import {PoolKey} from "pancake-v4-core/src/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "pancake-v4-core/src/types/PoolId.sol";
 import {BinPoolParametersHelper} from "pancake-v4-core/src/pool-bin/libraries/BinPoolParametersHelper.sol";
@@ -79,7 +81,7 @@ contract BinVeCakeExclusiveHookTest is Test, Deployers, DeployPermit2 {
         });
         id = key.toId();
 
-        poolManager.initialize(key, BIN_ID_1_1, ZERO_BYTES);
+        poolManager.initialize(key, BIN_ID_1_1);
 
         uint256 numBins = 1;
         int256[] memory deltaIds = new int256[](numBins);
@@ -110,9 +112,11 @@ contract BinVeCakeExclusiveHookTest is Test, Deployers, DeployPermit2 {
         vm.prank(nonHolder, nonHolder);
         vm.expectRevert(
             abi.encodeWithSelector(
-                Hooks.Wrap__FailedHookCall.selector,
-                address(veCakeExclusiveHook),
-                abi.encodeWithSelector(BinVeCakeExclusiveHook.NotVeCakeHolder.selector)
+                CustomRevert.WrappedError.selector,
+                address(key.hooks),
+                IBinHooks.beforeSwap.selector,
+                abi.encodeWithSelector(BinVeCakeExclusiveHook.NotVeCakeHolder.selector),
+                abi.encodeWithSelector(Hooks.HookCallFailed.selector)
             )
         );
         swapRouter.exactInputSingle(
