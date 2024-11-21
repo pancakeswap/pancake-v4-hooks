@@ -7,3 +7,6 @@
 [submodule "lib/pancake-v4-universal-router"]
 	path = lib/pancake-v4-universal-router
 	url = https://github.com/pancakeswap/pancake-v4-universal-router
+[submodule "lib/pancake-create3-factory"]
+	path = lib/pancake-create3-factory
+	url = https://github.com/pancakeswap/pancake-create3-factory
