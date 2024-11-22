@@ -49,13 +49,11 @@ contract SampleCLDynamicFeeHook is CLBaseHook {
         );
     }
 
-    function afterInitialize(
-        address sender,
-        PoolKey calldata key,
-        uint160 sqrtPriceX96,
-        int24 tick,
-        bytes calldata hookData
-    ) external override returns (bytes4) {
+    function afterInitialize(address sender, PoolKey calldata key, uint160 sqrtPriceX96, int24 tick)
+        external
+        override
+        returns (bytes4)
+    {
         setDynamicLpFee(key, DEFAULT_LP_FEE);
         return this.afterInitialize.selector;
     }

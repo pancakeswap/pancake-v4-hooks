@@ -1,13 +1,14 @@
   {
-    "vault": "0x0a125Bb36e409957Ed951eF1FBe20e81D682EAb6",
-    "clPoolManager": "0x26Ca53c8C5CE90E22aA1FadDA68AB9a08f7BA06f",
-    "binPoolManager": "0x1DF0be383e9d17DA4448E57712849aBE5b3Fa33b",
-    "clPositionManager": "0x095bd2cf90ef113aa8c53904cE54C17f4583046d",
-    "binPositionManager": "0x26008c91a2D47147d6739db3fFd3598A27da859d",
-    "mockVeCake": "0x86668337a40CaAd59F463E89550c6Aa59C056988",
-    "clVeCakeExclusiveHook": "0x3290880eB5b48Ee5CF1E8e381DDe932F7D696B27",
-    "binVeCakeExclusiveHook": "0x6203377AE3B7e1592806909836F6DC6b39026a60",
-    "sampleCLDynamicFeeHook": "0xbD63244010D2ee0C909F6aa652FA21d9606BBb65",
-    "sampleBinDynamicFeeHook": "0xaaD9dD9AfF7ad8317b1466965Bfa63235d5d3628"
+    "create3Factory": "0x38Ab3f2CE00973A51d3A2A04d634C9bcbf20e4e1",
+    "vault": "0xd557753bde3f0EaF32626F8681Ac6d8c1EBA2BBa",
+    "clPoolManager": "0x70890E308DCE727180ac1B9550928fED342dea52",
+    "binPoolManager": "0x68554d088F3640Bd2A7B38b43AE70FDcc16ef197",
+    "clPositionManager": "0x7E7856fBE18cd868dc9E2C161a7a78c53074D106",
+    "binPositionManager": "0x69317a4bF9Cd6bED6ea9b5C61ebcf78b5994A63E",
+    "mockVeCake": "0x57A8de995b9c5da68C9A645D8B4b6728E6f0dB4a",
+    "clVeCakeExclusiveHook": "0x2C57a007B5F8B77699191Ad82acd547D7Ba8f71E",
+    "binVeCakeExclusiveHook": "0x18547F0387665803793167e480776Dd24A037be2",
+    "sampleCLDynamicFeeHook": "0x6ABeC0F5Db5219Ce369117b3F2FfC64F27D510D3",
+    "sampleBinDynamicFeeHook": "0x6db98a4b2f65D0c5A589C69B617443a5312020a8"
   }
   

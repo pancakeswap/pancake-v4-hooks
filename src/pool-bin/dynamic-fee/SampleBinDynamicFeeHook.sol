@@ -28,68 +28,51 @@ contract SampleBinDynamicFeeHook is BinBaseHook {
         poolManager.updateDynamicLPFee(key, fee);
     }
 
-    function getHooksRegistrationBitmap()
-        external
-        pure
-        override
-        returns (uint16)
-    {
-        return
-            _hooksRegistrationBitmapFrom(
-                Permissions({
-                    beforeInitialize: false,
-                    afterInitialize: true,
-                    beforeMint: true,
-                    afterMint: false,
-                    beforeBurn: false,
-                    afterBurn: false,
-                    beforeSwap: true,
-                    afterSwap: false,
-                    beforeDonate: false,
-                    afterDonate: false,
-                    beforeSwapReturnDelta: false,
-                    afterSwapReturnDelta: false,
-                    afterMintReturnDelta: false,
-                    afterBurnReturnDelta: false
-                })
-            );
+    function getHooksRegistrationBitmap() external pure override returns (uint16) {
+        return _hooksRegistrationBitmapFrom(
+            Permissions({
+                beforeInitialize: false,
+                afterInitialize: true,
+                beforeMint: true,
+                afterMint: false,
+                beforeBurn: false,
+                afterBurn: false,
+                beforeSwap: true,
+                afterSwap: false,
+                beforeDonate: false,
+                afterDonate: false,
+                beforeSwapReturnDelta: false,
+                afterSwapReturnDelta: false,
+                afterMintReturnDelta: false,
+                afterBurnReturnDelta: false
+            })
+        );
     }
 
-    function afterInitialize(
-        address,
-        PoolKey calldata key,
-        uint24,
-        bytes calldata
-    ) external override returns (bytes4) {
+    function afterInitialize(address, PoolKey calldata key, uint24) external override returns (bytes4) {
         setDynamicLpFee(key, DEFAULT_LP_FEE);
         return this.afterInitialize.selector;
     }
 
-    function beforeMint(
-        address,
-        PoolKey calldata,
-        IBinPoolManager.MintParams calldata,
-        bytes calldata
-    ) external override returns (bytes4, uint24) {
+    function beforeMint(address, PoolKey calldata, IBinPoolManager.MintParams calldata, bytes calldata)
+        external
+        override
+        returns (bytes4, uint24)
+    {
         // if enableLPFeeOverride, the lp fee for the ongoing inner swap will be 0
         if (enableLPFeeOverride) {
-            return (
-                this.beforeMint.selector,
-                LPFeeLibrary.OVERRIDE_FEE_FLAG & FREE_LP_FEE
-            );
+            return (this.beforeMint.selector, LPFeeLibrary.OVERRIDE_FEE_FLAG & FREE_LP_FEE);
         }
 
         // otherwise, the lp fee will just be the default value
         return (this.beforeMint.selector, 0);
     }
 
-    function beforeSwap(
-        address,
-        PoolKey calldata,
-        bool,
-        int128,
-        bytes calldata
-    ) external override returns (bytes4, BeforeSwapDelta, uint24) {
+    function beforeSwap(address, PoolKey calldata, bool, int128, bytes calldata)
+        external
+        override
+        returns (bytes4, BeforeSwapDelta, uint24)
+    {
         // if enableLPFeeOverride, the lp fee for the ongoing swap will be 0
         if (enableLPFeeOverride) {
             return (
