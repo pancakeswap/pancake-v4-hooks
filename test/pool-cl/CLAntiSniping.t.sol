@@ -34,9 +34,9 @@ contract AntiSnipingTest is Test, Deployers, DeployPermit2 {
     uint128 constant POSITION_LOCK_DURATION = 1000;
     uint128 constant SAME_BLOCK_POSITIONS_LIMIT = 5;
 
-    address constant ALICE = address(0x1); // Alice is an honest liquidity provider
-    address constant BOB = address(0x2); // Bob is wanna-be sniper
-    address constant Candy = address(0x3); // Candy is a normal user
+    address constant ALICE = address(0x1111); // Alice is an honest liquidity provider
+    address constant BOB = address(0x2222); // Bob is wanna-be sniper
+    address constant Candy = address(0x3333); // Candy is a normal user
     bytes32 constant ALICE_SALT = 0x0000000000000000000000000000000000000000000000000000000000000001;
     bytes32 constant BOB_SALT = 0x0000000000000000000000000000000000000000000000000000000000000002;
 
@@ -208,45 +208,39 @@ contract AntiSnipingTest is Test, Deployers, DeployPermit2 {
 
         bobTokenId = _mintLiquidityPosition(BOB, -60, 60, 10000 ether, ZERO_BYTES);
 
+        // Swap occurs in the same block
+        uint128 swapAmount = 1 ether;
+        _performSwapExactInputSingle(Candy, true, swapAmount);
+
+        // Expected fees from swap
+        uint256 token0ExpectedFees = (uint256(swapAmount) * FEE) / 1e6; // Swap amount * fee percentage
+
+        // Advance to next block and perform another swap
+        vm.roll(3);
+        _performSwapExactInputSingle(Candy, false, swapAmount);
+        uint256 token1ExpectedFees = (uint256(swapAmount) * FEE) / 1e6;
+
+        // Collect fee info
+        PoolId poolId = key.toId();
+        antiSniping.collectLastBlockInfo(poolId);
+
+        // Calculate position keys
+        bytes32 alicePositionKey = CLPosition.calculatePositionKey(address(cpm), -60, 60, ALICE_SALT);
+        bytes32 bobPositionKey =
+                            CLPosition.calculatePositionKey(address(cpm), -60, 60, BOB_SALT);
+
+        // Verify that Alice did not accrue fees in the creation block
+        assertEq(antiSniping.firstBlockFeesToken0(poolId, alicePositionKey), 0);
+        assertEq(antiSniping.firstBlockFeesToken1(poolId, alicePositionKey), 0);
+
+        // Verify that Bob accrued fees from the first swap
+        assertApproxEqAbsDecimal(antiSniping.firstBlockFeesToken0(poolId, bobPositionKey), token0ExpectedFees / 2, 1e15, 18);
+        assertEq(antiSniping.firstBlockFeesToken1(poolId, bobPositionKey), 0);
+
+        // Advance to after position lock duration
         vm.roll(POSITION_LOCK_DURATION + 2);
 
-        // Alice removes liquidity
+        // Bob removes liquidity
         _decreaseLiquidityPosition(BOB, bobTokenId, 10000 ether, ZERO_BYTES);
-
-//        // Swap occurs in the same block
-//        uint128 swapAmount = 1 ether;
-//        _performSwapExactInputSingle(Candy, true, swapAmount);
-//
-//        // Expected fees from swap
-//        uint256 token0ExpectedFees = (uint256(swapAmount) * FEE) / 1e6; // Swap amount * fee percentage
-//
-//        // Advance to next block and perform another swap
-//        vm.roll(3);
-//        _performSwapExactInputSingle(Candy, false, swapAmount);
-//        uint256 token1ExpectedFees = (uint256(swapAmount) * FEE) / 1e6;
-//
-//        // Collect fee info
-//        PoolId poolId = key.toId();
-//        antiSniping.collectLastBlockInfo(poolId);
-//
-//        // Calculate position keys
-//        bytes32 alicePositionKey = CLPosition.calculatePositionKey(address(cpm), -60, 60, ALICE_SALT);
-//        bytes32 bobPositionKey =
-//                            CLPosition.calculatePositionKey(address(cpm), -60, 60, BOB_SALT);
-//
-//        // Verify that Alice did not accrue fees in the creation block
-//        assertEq(antiSniping.firstBlockFeesToken0(poolId, alicePositionKey), 0);
-//        assertEq(antiSniping.firstBlockFeesToken1(poolId, alicePositionKey), 0);
-//
-//        // Verify that Bob accrued fees from the first swap
-//        assertApproxEqAbsDecimal(antiSniping.firstBlockFeesToken0(poolId, bobPositionKey), token0ExpectedFees / 2, 1e15, 18);
-//        assertEq(antiSniping.firstBlockFeesToken1(poolId, bobPositionKey), 0);
-//
-//        // Advance to after position lock duration
-//        vm.roll(POSITION_LOCK_DURATION + 2);
-//
-//        console.log(bobTokenId);
-//        // Bob removes liquidity
-//        _decreaseLiquidityPosition(BOB, bobTokenId, 10000 ether, "0xBOB");
     }
 }
