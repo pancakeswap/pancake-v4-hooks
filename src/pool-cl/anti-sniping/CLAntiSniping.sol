@@ -75,9 +75,9 @@ contract CLAntiSniping is CLBaseHook {
                 beforeInitialize: false,
                 afterInitialize: false,
                 beforeAddLiquidity: true,
-                afterAddLiquidity: true,
+                afterAddLiquidity: false,
                 beforeRemoveLiquidity: true,
-                afterRemoveLiquidity: false,
+                afterRemoveLiquidity: true,
                 beforeSwap: true,
                 afterSwap: false,
                 beforeDonate: true,
@@ -103,10 +103,12 @@ contract CLAntiSniping is CLBaseHook {
             LiquidityParams memory params = positionKeyToLiquidityParams[positionKey];
             CLPosition.Info memory info = poolManager.getPosition(poolId, params.sender, params.tickLower, params.tickUpper, params.salt);
             (uint256 feeGrowthInside0X128, uint256 feeGrowthInside1X128) = _getFeeGrowthInside(poolId, params.sender, params.tickLower, params.tickUpper, params.salt);
+            uint256 feeGrowthDelta0X128 = feeGrowthInside0X128 - info.feeGrowthInside0LastX128;
+            uint256 feeGrowthDelta1X128 = feeGrowthInside1X128 - info.feeGrowthInside1LastX128;
             firstBlockFeesToken0[poolId][positionKey] =
-                                FullMath.mulDiv(feeGrowthInside0X128 - info.feeGrowthInside0LastX128, info.liquidity, FixedPoint128.Q128);
+                                FullMath.mulDiv(feeGrowthDelta0X128, info.liquidity, FixedPoint128.Q128);
             firstBlockFeesToken1[poolId][positionKey] =
-                                FullMath.mulDiv(feeGrowthInside1X128 - info.feeGrowthInside1LastX128, info.liquidity, FixedPoint128.Q128);
+                                FullMath.mulDiv(feeGrowthDelta1X128, info.liquidity, FixedPoint128.Q128);
         }
         delete positionsCreatedInLastBlock[poolId];
     }
