@@ -179,14 +179,14 @@ contract AntiSnipingTest is Test, Deployers, DeployPermit2 {
     }
 
     // Helper function to perform a swap
-    function _performSwapExactInputSingle(address user, bool zeroForOne, uint128 amountIn) internal {
+    function _performSwapExactOutputSingle(address user, bool zeroForOne, uint128 amountOut) internal {
         vm.prank(user);
-        swapRouter.exactInputSingle(
-            ICLRouterBase.CLSwapExactInputSingleParams({
+        swapRouter.exactOutputSingle(
+            ICLRouterBase.CLSwapExactOutputSingleParams({
                 poolKey: key,
                 zeroForOne: zeroForOne,
-                amountIn: amountIn,
-                amountOutMinimum: 0,
+                amountOut: amountOut,
+                amountInMaximum: 1.01 ether,
                 hookData: ZERO_BYTES
             }),
             block.timestamp
@@ -217,14 +217,14 @@ contract AntiSnipingTest is Test, Deployers, DeployPermit2 {
 
         // Swap occurs in the same block
         uint128 swapAmount = 1 ether;
-        _performSwapExactInputSingle(CANDY, true, swapAmount);
+        _performSwapExactOutputSingle(CANDY, true, swapAmount);
 
         // Expected fees from swap
         uint256 token0ExpectedFees = (uint256(swapAmount) * FEE) / 1e6; // Swap amount * fee percentage
 
         // Advance to next block and perform another swap
         vm.roll(3);
-        _performSwapExactInputSingle(CANDY, false, swapAmount);
+        _performSwapExactOutputSingle(CANDY, false, swapAmount);
         uint256 token1ExpectedFees = (uint256(swapAmount) * FEE) / 1e6;
 
         // Collect fee info
@@ -338,12 +338,9 @@ contract AntiSnipingTest is Test, Deployers, DeployPermit2 {
         // Alice adds liquidity
         aliceTokenId = _mintLiquidityPosition(ALICE, -60, 60, 10000 ether, ZERO_BYTES);
 
-        uint256 aliceBalance = currency0.balanceOf(ALICE);
-        console.log(aliceBalance);
-
         // Swap occurs in the same block
         uint128 swapAmount = 1 ether;
-        _performSwapExactInputSingle(CANDY, true, swapAmount);
+        _performSwapExactOutputSingle(CANDY, true, swapAmount);
         uint256 token0ExpectedFees = (uint256(swapAmount) * FEE) / 1e6;
 
         // Advance to next block and collect fee info
