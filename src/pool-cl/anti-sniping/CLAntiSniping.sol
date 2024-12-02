@@ -97,6 +97,7 @@ contract CLAntiSniping is CLBaseHook {
         if (block.number <= lastProcessedBlockNumber[poolId]) {
             return;
         }
+
         lastProcessedBlockNumber[poolId] = block.number;
         for (uint256 i = 0; i < positionsCreatedInLastBlock[poolId].length; i++) {
             bytes32 positionKey = positionsCreatedInLastBlock[poolId][i];
@@ -110,6 +111,7 @@ contract CLAntiSniping is CLBaseHook {
             firstBlockFeesToken1[poolId][positionKey] =
                                 FullMath.mulDiv(feeGrowthDelta1X128, info.liquidity, FixedPoint128.Q128);
         }
+
         delete positionsCreatedInLastBlock[poolId];
     }
 

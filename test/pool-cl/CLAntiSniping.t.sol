@@ -37,7 +37,7 @@ contract AntiSnipingTest is Test, Deployers, DeployPermit2 {
 
     uint24 constant FEE = 3000;
     uint128 constant POSITION_LOCK_DURATION = 1000;
-    uint128 constant SAME_BLOCK_POSITIONS_LIMIT = 5;
+    uint128 constant SAME_BLOCK_POSITIONS_LIMIT = 50;
 
     address constant ALICE = address(0x1111); // ALICE is an honest liquidity provider
     address constant BOB = address(0x2222); // BOB is wanna-be sniper
@@ -174,8 +174,6 @@ contract AntiSnipingTest is Test, Deployers, DeployPermit2 {
             // hookData:
             hookData
         );
-
-
     }
 
     // Helper function to perform a swap
