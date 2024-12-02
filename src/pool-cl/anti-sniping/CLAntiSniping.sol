@@ -27,10 +27,10 @@ contract CLAntiSniping is CLBaseHook {
     mapping(PoolId => mapping(bytes32 => uint256)) public positionCreationBlock;
 
     /// @notice The duration (in blocks) for which a position must remain locked before it can be removed.
-    uint128 public positionLockDuration;
+    uint128 public immutable positionLockDuration;
 
     /// @notice The maximum number of positions that can be created in the same block per pool to prevent excessive gas usage.
-    uint128 public sameBlockPositionsLimit;
+    uint128 public immutable sameBlockPositionsLimit;
 
     mapping(PoolId => uint256) lastProcessedBlockNumber;
 
@@ -139,6 +139,9 @@ contract CLAntiSniping is CLBaseHook {
             // If the pool is empty, the fees are not donated and are returned to the sender
             hookDelta = BalanceDeltaLibrary.ZERO_DELTA;
         }
+
+        positionCreationBlock[poolId][positionKey] = 0;
+
         return (this.afterRemoveLiquidity.selector, hookDelta);
     }
 

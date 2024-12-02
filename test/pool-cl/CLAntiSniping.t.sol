@@ -393,7 +393,7 @@ contract AntiSnipingTest is Test, Deployers, DeployPermit2 {
 
         // Attempt to partially remove liquidity and expect revert
         vm.expectRevert();
-        _decreaseLiquidityPosition(ALICE, aliceTokenId, 10 ether, ZERO_BYTES);
+        _decreaseLiquidityPosition(ALICE, aliceTokenId, 5 ether, ZERO_BYTES);
     }
 
     /// @notice Test that exceeding same block position limit reverts
