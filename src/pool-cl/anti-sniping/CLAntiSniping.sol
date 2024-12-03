@@ -142,7 +142,10 @@ contract CLAntiSniping is CLBaseHook {
             hookDelta = BalanceDeltaLibrary.ZERO_DELTA;
         }
 
-        positionCreationBlock[poolId][positionKey] = 0;
+        // Cleanup stored data for the position
+        delete positionCreationBlock[poolId][positionKey];
+        delete firstBlockFeesToken0[poolId][positionKey];
+        delete firstBlockFeesToken1[poolId][positionKey];
 
         return (this.afterRemoveLiquidity.selector, hookDelta);
     }
