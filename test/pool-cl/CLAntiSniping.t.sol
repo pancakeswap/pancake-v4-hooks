@@ -126,7 +126,7 @@ contract AntiSnipingTest is Test, Deployers, DeployPermit2 {
         token1.transfer(CANDY, 10000 ether);
     }
 
-    // Helper function to mint liquidity positions (add)
+    // Helper function to mint liquidity positions
     function _mintLiquidityPosition(
         address user,
         int24 tickLower,
@@ -152,6 +152,32 @@ contract AntiSnipingTest is Test, Deployers, DeployPermit2 {
         );
     }
 
+    // Helper function to increase liquidity positions (add)
+    function _increaseLiquidityPosition(
+        address user,
+        uint256 tokenId,
+        uint256 liquidityDelta,
+        bytes memory hookData
+    ) internal returns (uint256) {
+        vm.prank(user);
+        cpm.increaseLiquidity(
+            // tokenId:
+            tokenId,
+            // poolKey:
+            key,
+            // liquidity:
+            liquidityDelta,
+            // amount0Max:
+            10000e18,
+            // amount1Max:
+            10000e18,
+            // hookData:
+            hookData
+        );
+
+        return tokenId;
+    }
+
     // Helper function to decrease liquidity positions (remove)
     function _decreaseLiquidityPosition(
         address user,
@@ -161,7 +187,7 @@ contract AntiSnipingTest is Test, Deployers, DeployPermit2 {
     ) internal {
         vm.prank(user);
         cpm.decreaseLiquidity(
-        // tokenId:
+            // tokenId:
             tokenId,
             // poolKey:
             key,
@@ -363,6 +389,71 @@ contract AntiSnipingTest is Test, Deployers, DeployPermit2 {
         assertApproxEqAbsDecimal(
             aliceToken0After, aliceToken0Before + uint256(swapAmount) + token0ExpectedFees, 1e15, 18
         );
+    }
+
+    /// @notice Test that swap after increase liquidity
+    function testSwapAfterIncreaseLiquidity() public {
+        // Record initial balances
+        uint256 aliceToken0Before = currency0.balanceOf(ALICE);
+        uint256 aliceToken1Before = currency1.balanceOf(ALICE);
+
+        aliceTokenId = _mintLiquidityPosition(ALICE, -60, 60, 10000 ether, ZERO_BYTES);
+
+        // Advance to next block
+        vm.roll(2);
+
+        // Attempt to add liquidity and expect revert
+        vm.expectRevert();
+        _increaseLiquidityPosition(ALICE, aliceTokenId, 10000 ether, ZERO_BYTES);
+
+        // Advance to after position lock duration
+        vm.roll(POSITION_LOCK_DURATION + 1);
+
+        // Alice add liquidity
+        _increaseLiquidityPosition(ALICE, aliceTokenId, 10000 ether, ZERO_BYTES);
+
+        // Swap occurs in the same block
+        uint128 swapAmount = 1 ether;
+        _performSwapExactOutputSingle(CANDY, true, swapAmount);
+
+        // Expected fees from swap
+        uint256 token0ExpectedFees = (uint256(swapAmount) * FEE) / 1e6; // Swap amount * fee percentage
+
+        // Advance to after position lock duration
+        vm.roll(POSITION_LOCK_DURATION + 3);
+        _performSwapExactOutputSingle(CANDY, false, swapAmount);
+        uint256 token1ExpectedFees = (uint256(swapAmount) * FEE) / 1e6;
+
+        // Collect fee info
+        PoolId poolId = key.toId();
+        antiSniping.collectLastBlockInfo(poolId);
+
+        // Calculate position keys
+        bytes32 alicePositionKey = CLPosition.calculatePositionKey(address(cpm), -60, 60, ALICE_SALT);
+
+        // Verify that Alice did not accrue fees in the creation block
+        assertEq(antiSniping.firstBlockFeesToken0(poolId, alicePositionKey), 0);
+        assertEq(antiSniping.firstBlockFeesToken1(poolId, alicePositionKey), 0);
+
+        // Attempt to remove liquidity and expect revert
+        vm.expectRevert();
+        _decreaseLiquidityPosition(ALICE, aliceTokenId, 20000 ether, ZERO_BYTES);
+
+        // Advance to after position lock duration
+        vm.roll(POSITION_LOCK_DURATION + POSITION_LOCK_DURATION + 2);
+
+        // Attempt to remove liquidity partially and expect revert
+        vm.expectRevert();
+        _decreaseLiquidityPosition(ALICE, aliceTokenId, 10000 ether, ZERO_BYTES);
+
+        // Alice removes liquidity
+        _decreaseLiquidityPosition(ALICE, aliceTokenId, 20000 ether, ZERO_BYTES);
+
+        // Verify that Alice received full fees from the first swap and half from the second
+        uint256 aliceToken0After = currency0.balanceOf(ALICE);
+        uint256 aliceToken1After = currency1.balanceOf(ALICE);
+        assertApproxEqAbsDecimal(aliceToken0After, aliceToken0Before + token0ExpectedFees, 1e15, 18);
+        assertApproxEqAbsDecimal(aliceToken1After, aliceToken1Before + token1ExpectedFees, 1e15, 18);
     }
 
     // --- Safeguard Tests ---

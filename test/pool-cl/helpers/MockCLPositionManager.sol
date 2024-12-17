@@ -46,6 +46,23 @@ contract MockCLPositionManager is CLPositionManager, CommonBase {
         liquidityMinted = _getLiquidity(tokenId, poolKey, tickLower, tickUpper);
     }
 
+    function increaseLiquidity(
+        uint256 tokenId,
+        PoolKey calldata poolKey,
+        uint256 liquidity,
+        uint128 amount0Max,
+        uint128 amount1Max,
+        bytes calldata hookData
+    ) external payable {
+        Plan memory planner = Planner.init().add(
+            Actions.CL_INCREASE_LIQUIDITY, abi.encode(tokenId, liquidity, amount0Max, amount1Max, hookData)
+        );
+        bytes memory data = planner.finalizeModifyLiquidityWithClose(poolKey);
+
+        vm.prank(msg.sender);
+        this.modifyLiquidities(data, block.timestamp);
+    }
+
     function decreaseLiquidity(
         uint256 tokenId,
         PoolKey calldata poolKey,

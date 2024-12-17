@@ -15,7 +15,7 @@ import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "pancake-v4-core/src/types
 import {FullMath} from "pancake-v4-core/src/pool-cl/libraries/FullMath.sol";
 import {FixedPoint128} from "pancake-v4-core/src/pool-cl/libraries/FixedPoint128.sol";
 import {SafeCast} from "pancake-v4-core/src/libraries/SafeCast.sol";
-
+import "forge-std/console.sol";
 /// @title AntiSnipingHook
 /// @notice A PancakeSwap V4 hook that prevents MEV sniping attacks by enforcing time locks on positions and redistributing fees accrued in the initial block to legitimate liquidity providers.
 /// @dev Positions are time-locked, and fees accrued in the first block after position creation are redistributed.
@@ -53,7 +53,7 @@ contract CLAntiSniping is CLBaseHook {
 
     /// @notice Error thrown when attempting to modify an existing position.
     /// @dev Positions cannot be modified after creation to prevent edge cases.
-    error PositionAlreadyExists();
+    error PositionAlreadyExistsAndLocked();
 
     /// @notice Error thrown when attempting to partially withdraw from a position.
     error PositionPartiallyWithdrawn();
@@ -167,10 +167,17 @@ contract CLAntiSniping is CLBaseHook {
         liqParams.tickUpper = params.tickUpper;
         liqParams.salt = params.salt;
         positionKeyToLiquidityParams[positionKey] = liqParams;
-        if (positionCreationBlock[poolId][positionKey] != 0) revert PositionAlreadyExists();
+
+        if (positionCreationBlock[poolId][positionKey] != 0 &&
+            block.number - positionCreationBlock[poolId][positionKey] < positionLockDuration) {
+            revert PositionAlreadyExistsAndLocked();
+        }
         if (positionsCreatedInLastBlock[poolId].length >= sameBlockPositionsLimit) revert TooManyPositionsInSameBlock();
+        if (positionCreationBlock[poolId][positionKey] == 0) {
+            positionsCreatedInLastBlock[poolId].push(positionKey);
+        }
         positionCreationBlock[poolId][positionKey] = block.number;
-        positionsCreatedInLastBlock[poolId].push(positionKey);
+
         return (this.beforeAddLiquidity.selector);
     }
 
