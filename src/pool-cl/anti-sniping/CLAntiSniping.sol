@@ -166,7 +166,6 @@ contract CLAntiSniping is CLBaseHook {
         liqParams.tickLower = params.tickLower;
         liqParams.tickUpper = params.tickUpper;
         liqParams.salt = params.salt;
-        positionKeyToLiquidityParams[positionKey] = liqParams;
 
         if (positionCreationBlock[poolId][positionKey] != 0 &&
             block.number - positionCreationBlock[poolId][positionKey] < positionLockDuration) {

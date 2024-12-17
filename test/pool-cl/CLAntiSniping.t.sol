@@ -29,7 +29,6 @@ import {CLAntiSniping} from "../../src/pool-cl/anti-sniping/CLAntiSniping.sol";
 import {Planner, Plan} from "pancake-v4-periphery/src/libraries/Planner.sol";
 import {Actions} from "pancake-v4-periphery/src/libraries/Actions.sol";
 
-import {console} from "forge-std/console.sol";
 contract AntiSnipingTest is Test, Deployers, DeployPermit2 {
     using PoolIdLibrary for PoolKey;
     using CLPoolParametersHelper for bytes32;
