@@ -16,6 +16,12 @@ import {FullMath} from "pancake-v4-core/src/pool-cl/libraries/FullMath.sol";
 import {FixedPoint128} from "pancake-v4-core/src/pool-cl/libraries/FixedPoint128.sol";
 import {SafeCast} from "pancake-v4-core/src/libraries/SafeCast.sol";
 
+/*
+ * @dev Disclaimer:
+ *      - This contract has not been audited.
+ *      - Developers using this code are advised to thoroughly review and test it before deploying it to production.
+ */
+
 /// @title AntiSnipingHook
 /// @notice A PancakeSwap V4 hook that prevents MEV sniping attacks by enforcing time locks on positions and redistributing fees accrued in the initial block to legitimate liquidity providers.
 /// @dev Positions are time-locked, and fees accrued in the first block after position creation are redistributed.
